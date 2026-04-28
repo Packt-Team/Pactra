@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Packt — Group Trips</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink: #0f0e0d;
+  --paper: #f5f0e8;
+  --sand: #e8dfc8;
+  --sand2: #dfd5bc;
+  --rust: #c9440f;
+  --rust-dim: #c9440f18;
+  --rust-border: #c9440f35;
+  --gold: #c49a14;
+  --gold-dim: #c49a1415;
+  --sage: #3d5c35;
+  --sage-dim: #3d5c3515;
+  --muted: #7a7060;
+  --muted2: #a09880;
+  --card: #faf7f2;
+  --white: #ffffff;
+  --border: #d8d0bc;
+  --border2: #ece5d4;
+  --red: #d63030;
+  --red-dim: #d6303012;
+  --blue: #2563a8;
+  --blue-dim: #2563a812;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+}
+
+body { background: var(--paper); font-family: 'DM Sans', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--sand2); border-radius: 4px; }
+
+.app { min-height: 100vh; display: flex; flex-direction: column; background: var(--paper); }
+
+/* NAV */
+.nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 28px; border-bottom: 1.5px solid var(--border);
+  background: var(--paper); position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.nav-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 21px; letter-spacing: -0.5px; cursor: pointer; }
+.nav-logo span { color: var(--rust); }
+.nav-tabs { display: flex; gap: 2px; background: var(--sand); border-radius: 100px; padding: 3px; }
+.nav-tab {
+  padding: 7px 18px; border-radius: 100px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border: none; background: none; color: var(--muted);
+  transition: all 0.18s; font-family: 'DM Sans', sans-serif;
+}
+.nav-tab.active { background: var(--ink); color: var(--paper); }
+.nav-tab:not(.active):hover { color: var(--ink); }
+.nav-avatar {
+  width: 34px; height: 34px; border-radius: 50%; background: var(--rust); color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer;
+  border: 2px solid var(--rust-border); position: relative;
+}
+.notif-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--rust);
+  position: absolute; top: -1px; right: -1px; border: 1.5px solid var(--paper);
+}
+
+/* PAGES */
+.page { max-width: 860px; margin: 0 auto; padding: 36px 28px 80px; width: 100%; display: none; }
+.page.active { display: block; }
+.page-header { margin-bottom: 32px; }
+.page-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 11px;
+  font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: var(--rust);
+  margin-bottom: 10px;
+}
+.page-eyebrow::before { content:''; width: 18px; height: 1.5px; background: var(--rust); display: inline-block; vertical-align: middle; }
+.page-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(26px, 4vw, 40px); letter-spacing: -1px; line-height: 1.05; }
+.page-title em { font-style: italic; color: var(--rust); }
+.page-sub { color: var(--muted); font-size: 15px; margin-top: 8px; line-height: 1.6; }
+
+/* CARDS */
+.card {
+  background: var(--card); border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  transition: box-shadow 0.2s; margin-bottom: 14px;
+}
+.card:hover { box-shadow: 0 6px 28px #0f0e0d0e; }
+.card-body { padding: 24px 26px; }
+.card-footer {
+  padding: 14px 26px; border-top: 1.5px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--paper);
+}
+
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 20px; border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px;
+  cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap;
+}
+.btn-primary { background: var(--rust); color: white; }
+.btn-primary:hover { background: #b03a0a; transform: translateY(-1px); }
+.btn-secondary { background: none; border: 1.5px solid var(--border); color: var(--ink); }
+.btn-secondary:hover { border-color: var(--ink); }
+.btn-ghost { background: none; color: var(--muted); padding: 8px 14px; border: none; }
+.btn-ghost:hover { color: var(--ink); background: var(--sand); border-radius: 8px; }
+.btn-sage { background: var(--sage); color: white; }
+.btn-sage:hover { background: #2e4728; }
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+.btn-icon { padding: 8px; border-radius: 10px; width: 34px; height: 34px; justify-content: center; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+/* BADGES */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 100px;
+}
+.badge-rust { background: var(--rust-dim); color: var(--rust); border: 1px solid var(--rust-border); }
+.badge-sage { background: var(--sage-dim); color: var(--sage); border: 1px solid #3d5c3530; }
+.badge-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid #c49a1430; }
+.badge-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid #2563a825; }
+.badge-red { background: var(--red-dim); color: var(--red); border: 1px solid #d6303025; }
+
+.divider { height: 1.5px; background: var(--border2); margin: 20px 0; }
+
+/* STAT GRID */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+.stat-card {
+  background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  padding: 20px 22px; position: relative; overflow: hidden;
+}
+.stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.stat-card.green::after { background: var(--sage); }
+.stat-card.orange::after { background: var(--rust); }
+.stat-card.gold::after { background: var(--gold); }
+.stat-card.blue::after { background: var(--blue); }
+.stat-label { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.stat-value { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 32px; letter-spacing: -1px; line-height: 1; }
+.stat-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* TRANSACTIONS */
+.tx-list { display: flex; flex-direction: column; gap: 2px; }
+.tx-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border2); }
+.tx-item:last-child { border-bottom: none; }
+.tx-icon { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+.tx-icon.green { background: var(--sage-dim); }
+.tx-icon.orange { background: var(--rust-dim); }
+.tx-icon.gold { background: var(--gold-dim); }
+.tx-info { flex: 1; }
+.tx-name { font-weight: 500; font-size: 14px; }
+.tx-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tx-amount { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
+.tx-amount.positive { color: var(--sage); }
+.tx-amount.negative { color: var(--rust); }
+
+/* ESCROW BAR */
+.escrow-bar-wrap { margin: 8px 0; }
+.escrow-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.escrow-bar { height: 8px; background: var(--sand); border-radius: 100px; overflow: hidden; }
+.escrow-bar-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--sage), #6a9e5f); }
+
+/* MINI CHART */
+.mini-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; margin: 16px 0 8px; }
+.mini-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.mini-bar {
+  width: 100%; border-radius: 5px 5px 0 0; background: var(--sage-dim);
+  border: 1.5px solid #3d5c3530; transition: all 0.3s; cursor: pointer;
+}
+.mini-bar:hover { border-color: var(--sage); }
+.mini-bar.active { background: var(--sage); border-color: var(--sage); }
+.mini-bar-label { font-size: 10px; color: var(--muted); font-weight: 500; }
+
+/* SETTINGS */
+.settings-section-title {
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px;
+  letter-spacing: -0.3px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; background: var(--sand);
+}
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 0; border-bottom: 1px solid var(--border2); gap: 16px;
+}
+.settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+.settings-row-left { flex: 1; }
+.settings-row-label { font-weight: 500; font-size: 14px; margin-bottom: 3px; }
+.settings-row-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* TOGGLE */
+.toggle-wrap { position: relative; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
+.toggle-input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider {
+  position: absolute; inset: 0; background: var(--sand2);
+  border-radius: 100px; transition: 0.2s; border: 1.5px solid var(--border);
+}
+.toggle-slider::before {
+  content: ''; position: absolute; width: 16px; height: 16px;
+  border-radius: 50%; background: white; top: 2px; left: 2px;
+  transition: 0.2s; box-shadow: 0 1px 4px #0003;
+}
+.toggle-input:checked + .toggle-slider { background: var(--sage); border-color: var(--sage); }
+.toggle-input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+/* STEPPER */
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper-btn {
+  width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: var(--card); font-size: 17px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; line-height: 1;
+}
+.stepper-btn:hover { border-color: var(--ink); background: var(--sand); }
+.stepper-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; min-width: 52px; text-align: center; letter-spacing: -0.5px; }
+
+/* MEMBER LIST */
+.member-list { display: flex; flex-direction: column; gap: 2px; }
+.member-item { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border2); }
+.member-item:last-child { border-bottom: none; }
+.member-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: white; flex-shrink: 0;
+}
+.member-info { flex: 1; }
+.member-name { font-weight: 500; font-size: 14px; }
+.member-role { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.member-status { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+/* RADIO GROUP */
+.radio-group { display: flex; flex-direction: column; gap: 8px; }
+.radio-option {
+  display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  cursor: pointer; transition: all 0.15s;
+}
+.radio-option:hover { border-color: var(--ink); }
+.radio-option.selected { border-color: var(--sage); background: var(--sage-dim); }
+.radio-dot {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s;
+}
+.radio-option.selected .radio-dot { border-color: var(--sage); background: var(--sage); }
+.radio-option.selected .radio-dot::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: white; display: block; }
+.radio-text { flex: 1; }
+.radio-label { font-weight: 500; font-size: 14px; }
+.radio-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* NEW TRIP FLOW */
+.flow-steps { display: flex; gap: 0; margin-bottom: 28px; }
+.flow-step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+.flow-step:not(:last-child)::after {
+  content: ''; position: absolute; top: 15px; left: 50%; width: 100%; height: 1.5px;
+  background: var(--border); z-index: 0;
+}
+.flow-step-dot {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border);
+  background: var(--card); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; z-index: 1; transition: all 0.2s; position: relative;
+}
+.flow-step.done .flow-step-dot { background: var(--sage); border-color: var(--sage); color: white; }
+.flow-step.active .flow-step-dot { background: var(--ink); border-color: var(--ink); color: white; }
+.flow-step-label { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: center; font-weight: 500; }
+.flow-step.active .flow-step-label { color: var(--ink); font-weight: 600; }
+
+.location-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 16px 0; }
+.location-option {
+  padding: 16px; border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  cursor: pointer; transition: all 0.15s; background: var(--card);
+}
+.location-option:hover { border-color: var(--ink); transform: translateY(-1px); }
+.location-option.selected { border-color: var(--rust); background: var(--rust-dim); }
+.location-emoji { font-size: 28px; display: block; margin-bottom: 8px; }
+.location-name { font-weight: 600; font-size: 14px; }
+.location-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* INVITE */
+.invite-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.invite-input {
+  flex: 1; padding: 11px 16px; border: 1.5px solid var(--border); border-radius: 100px;
+  background: var(--card); font-family: 'DM Sans', sans-serif; font-size: 14px;
+  outline: none; transition: border-color 0.15s; color: var(--ink);
+}
+.invite-input:focus { border-color: var(--ink); }
+.invited-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.invited-chip {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+  background: var(--sand); border-radius: 100px; font-size: 13px; font-weight: 500;
+}
+.invited-chip button { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; line-height: 1; padding: 0 0 0 2px; }
+.invited-chip button:hover { color: var(--rust); }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0; background: #0f0e0d70; backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px;
+}
+.modal-overlay.open { display: flex; animation: fadein 0.18s ease; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+  padding: 32px; max-width: 440px; width: 100%;
+  animation: slideup 0.22s ease;
+}
+@keyframes slideup { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 18px; }
+.modal h2 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 21px; letter-spacing: -0.4px; margin-bottom: 8px; }
+.modal p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 22px; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; justify-content: center; border-radius: 12px; padding: 13px; }
+
+/* FLOW STEP PANELS */
+.flow-panel { display: none; }
+.flow-panel.active { display: block; }
+
+/* ANIMATIONS */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: fadeInUp 0.3s ease forwards; }
+
+/* TWO COL GRID */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+@media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } .nav-tabs { display: none; } }
+
+/* TRIPS PAGE FILTER BAR */
+.filter-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.trip-progress { height: 5px; background: var(--sand); border-radius: 100px; overflow: hidden; }
+.trip-progress-fill { height: 100%; border-radius: 100px; transition: width 0.5s; }
+.avatar-stack { display: flex; }
+.avatar-stack .av {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--card);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: white; font-weight: 700; font-family: 'Syne', sans-serif;
+}
+.avatar-stack .av:not(:first-child) { margin-left: -8px; }
+
+/* FLOW PAGE narrower */
+#page-new { max-width: 580px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-logo" onclick="switchTab('trips')">pac<span>k</span>t</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('trips')" id="tab-trips">Trips</button>
+      <button class="nav-tab" onclick="switchTab('new')" id="tab-new">New Trip</button>
+      <button class="nav-tab" onclick="switchTab('wallet')" id="tab-wallet">Wallet</button>
+      <button class="nav-tab" onclick="switchTab('settings')" id="tab-settings">Settings</button>
+    </div>
+    <div class="nav-avatar">Y<div class="notif-dot"></div></div>
+  </nav>
+
+  <!-- ══════════ TRIPS PAGE ══════════ -->
+  <div class="page active" id="page-trips">
+    <div class="page-header animate-in">
+      <div class="page-eyebrow">Your Group Trips</div>
+      <h1 class="page-title">No more<br/><em>flaking</em> allowed.</h1>
+      <p class="page-sub">Vote, commit, and hold each other accountable. Trips that actually happen.</p>
+    </div>
+
+    <div class="filter-bar">
+      <button class="btn btn-primary btn-sm">All trips <span style="opacity:0.6;margin-left:2px">·3</span></button>
+      <button class="btn btn-secondary btn-sm">Voting <span style="opacity:0.6;margin-left:2px">·1</span></button>
+      <button class="btn btn-secondary btn-sm">Commit phase <span style="opacity:0.6;margin-left:2px">·1</span></button>
+      <button class="btn btn-secondary btn-sm">Locked <span style="opacity:0.6;margin-left:2px">·1</span></button>
+      <button class="btn btn-sage btn-sm" style="margin-left:auto" onclick="switchTab('new')">+ New Trip</button>
+    </div>
+
+    <!-- Trip 1 -->
+    <div class="card animate-in">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <div class="badge badge-gold" style="margin-bottom:8px">Voting Open</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.5px">Tulum, Mexico 🌴</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px">📅 Jul 18–25 · 5/9 committed</div>
+          </div>
+          <div style="background:var(--ink);color:var(--paper);border-radius:12px;padding:10px 16px;text-align:center;min-width:80px">
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:21px">$40</div>
+            <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#ffffff70;margin-top:2px">Deposit</div>
+          </div>
+        </div>
+        <div class="trip-progress"><div class="trip-progress-fill" style="background:var(--gold);width:55%"></div></div>
+      </div>
+      <div class="card-footer">
+        <div class="avatar-stack">
+          <div class="av" style="background:#3d5c35">M</div>
+          <div class="av" style="background:#c9440f">J</div>
+          <div class="av" style="background:#c49a14">S</div>
+          <div class="av" style="background:#2563a8">P</div>
+          <div class="av" style="background:#8a5a7a">C</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="switchTab('settings')">⚙ Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trip 2 -->
+    <div class="card animate-in" style="animation-delay:0.05s">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <div class="badge badge-rust" style="margin-bottom:8px">Commit Phase</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.5px">Zion National Park 🏜️</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px">📅 Aug 2–6 · 4/7 committed</div>
+          </div>
+          <div style="background:var(--ink);color:var(--paper);border-radius:12px;padding:10px 16px;text-align:center;min-width:80px">
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:21px">$25</div>
+            <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#ffffff70;margin-top:2px">Deposit</div>
+          </div>
+        </div>
+        <div class="trip-progress"><div class="trip-progress-fill" style="background:var(--rust);width:57%"></div></div>
+      </div>
+      <div class="card-footer">
+        <div class="avatar-stack">
+          <div class="av" style="background:#3d5c35">M</div>
+          <div class="av" style="background:#c9440f">J</div>
+          <div class="av" style="background:#c49a14">S</div>
+          <div class="av" style="background:#2563a8">P</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="switchTab('settings')">⚙ Settings</button>
+          <button class="btn btn-primary btn-sm">Commit →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trip 3 -->
+    <div class="card animate-in" style="animation-delay:0.1s">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <div class="badge badge-sage" style="margin-bottom:8px">Trip Locked 🔒</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.5px">New Orleans, LA 🎷</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px">📅 Sep 12–15 · 5/5 committed</div>
+          </div>
+          <div style="background:var(--ink);color:var(--paper);border-radius:12px;padding:10px 16px;text-align:center;min-width:80px">
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:21px">$50</div>
+            <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#ffffff70;margin-top:2px">Deposit</div>
+          </div>
+        </div>
+        <div class="trip-progress"><div class="trip-progress-fill" style="background:var(--sage);width:100%"></div></div>
+      </div>
+      <div class="card-footer">
+        <div class="avatar-stack">
+          <div class="av" style="background:#3d5c35">M</div>
+          <div class="av" style="background:#c9440f">J</div>
+          <div class="av" style="background:#c49a14">S</div>
+          <div class="av" style="background:#2563a8">P</div>
+          <div class="av" style="background:#8a5a7a">C</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="switchTab('settings')">⚙ Settings</button>
+          <button class="btn btn-sage btn-sm">View Trip →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ NEW TRIP PAGE ══════════ -->
+  <div class="page" id="page-new">
+    <div class="page-header animate-in">
+      <div class="page-eyebrow">New Trip</div>
+      <h1 class="page-title">Let's get<br/><em>planning.</em></h1>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="flow-steps animate-in" id="flow-steps">
+      <div class="flow-step active" id="fstep-0"><div class="flow-step-dot">1</div><div class="flow-step-label">Destination</div></div>
+      <div class="flow-step" id="fstep-1"><div class="flow-step-dot">2</div><div class="flow-step-label">Details</div></div>
+      <div class="flow-step" id="fstep-2"><div class="flow-step-dot">3</div><div class="flow-step-label">Members</div></div>
+      <div class="flow-step" id="fstep-3"><div class="flow-step-dot">4</div><div class="flow-step-label">Review</div></div>
+    </div>
+
+    <!-- Step 0: Destination -->
+    <div class="flow-panel active" id="fpanel-0">
+      <div class="card animate-in">
+        <div class="card-body">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:17px;margin-bottom:6px">Vote on a destination</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.6">Add locations your group can vote on. The winner becomes your trip destination.</div>
+          <div class="location-grid" id="location-grid">
+            <div class="location-option" onclick="selectLocation(1, this)"><span class="location-emoji">🌴</span><div class="location-name">Tulum, Mexico</div><div class="location-sub">Beach + cenotes</div></div>
+            <div class="location-option" onclick="selectLocation(2, this)"><span class="location-emoji">🏔️</span><div class="location-name">Banff, Canada</div><div class="location-sub">Mountains + lakes</div></div>
+            <div class="location-option" onclick="selectLocation(3, this)"><span class="location-emoji">🏙️</span><div class="location-name">NYC, New York</div><div class="location-sub">City vibes</div></div>
+            <div class="location-option" onclick="selectLocation(4, this)"><span class="location-emoji">🌊</span><div class="location-name">Lisbon, Portugal</div><div class="location-sub">Culture + coast</div></div>
+          </div>
+          <input class="invite-input" placeholder="+ Add another destination..." style="width:100%;border-radius:12px;margin-top:12px"/>
+        </div>
+        <div class="card-footer">
+          <div style="font-size:13px;color:var(--muted)" id="loc-count-label">Pick at least 1</div>
+          <button class="btn btn-primary" id="step0-next" disabled onclick="goToStep(1)">Continue →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: Details -->
+    <div class="flow-panel" id="fpanel-1">
+      <div class="card animate-in">
+        <div class="card-body">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:17px;margin-bottom:16px">Trip details</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Trip name</div>
+              <input class="invite-input" style="width:100%;border-radius:12px" id="trip-name-input" placeholder="e.g. Summer beach trip 🌊"/>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Dates</div>
+              <input class="invite-input" style="width:100%;border-radius:12px" id="trip-dates-input" placeholder="e.g. Aug 10–17, 2025"/>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Commitment deposit</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--sand);border-radius:12px;padding:14px 18px">
+                <div>
+                  <div style="font-weight:500;font-size:14px">Required deposit per person</div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:2px">Set higher for bigger commitment</div>
+                </div>
+                <div class="stepper">
+                  <button class="stepper-btn" onclick="adjustDeposit(-5)">−</button>
+                  <div class="stepper-val" id="deposit-val">$30</div>
+                  <button class="stepper-btn" onclick="adjustDeposit(5)">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(0)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(2)">Continue →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Members -->
+    <div class="flow-panel" id="fpanel-2">
+      <div class="card animate-in">
+        <div class="card-body">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:17px;margin-bottom:6px">Invite your crew</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">They'll receive a link to vote on the destination and commit with a deposit once you lock in.</div>
+          <div class="invite-input-row">
+            <input class="invite-input" placeholder="Email or phone..." id="invite-email-input" onkeydown="if(event.key==='Enter') addInvite()"/>
+            <button class="btn btn-primary" onclick="addInvite()">Add</button>
+          </div>
+          <div class="invited-list" id="invited-list">
+            <div class="invited-chip">jordan@email.com<button onclick="removeInvite(this)">✕</button></div>
+            <div class="invited-chip">maya@email.com<button onclick="removeInvite(this)">✕</button></div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(3)">Continue →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Review -->
+    <div class="flow-panel" id="fpanel-3">
+      <div class="card animate-in">
+        <div class="card-body">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:17px;margin-bottom:16px">Review & launch</div>
+          <div class="settings-row" style="padding-top:4px"><div style="font-size:12px;color:var(--muted);font-weight:500">Destination options</div><div style="font-weight:600;font-size:14px" id="review-dest">—</div></div>
+          <div class="settings-row"><div style="font-size:12px;color:var(--muted);font-weight:500">Trip name</div><div style="font-weight:600;font-size:14px" id="review-name">(untitled)</div></div>
+          <div class="settings-row"><div style="font-size:12px;color:var(--muted);font-weight:500">Dates</div><div style="font-weight:600;font-size:14px" id="review-dates">TBD</div></div>
+          <div class="settings-row"><div style="font-size:12px;color:var(--muted);font-weight:500">Deposit per person</div><div style="font-weight:600;font-size:14px" id="review-deposit">$30</div></div>
+          <div class="settings-row"><div style="font-size:12px;color:var(--muted);font-weight:500">Invites sent</div><div style="font-weight:600;font-size:14px" id="review-invites">2 people</div></div>
+          <div class="settings-row"><div style="font-size:12px;color:var(--muted);font-weight:500">Bail rule</div><div style="font-weight:600;font-size:14px">Majority vote</div></div>
+          <div style="background:var(--sage-dim);border:1.5px solid #3d5c3530;border-radius:12px;padding:14px 16px;margin-top:16px;font-size:13px;color:var(--sage);line-height:1.6">
+            ✓ Deposits are held in escrow and only released after the trip concludes or a bail vote passes.
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
+          <button class="btn btn-sage" onclick="launchTrip()">🚀 Launch Trip</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Launched state -->
+    <div class="flow-panel" id="fpanel-launched" style="text-align:center;padding:60px 0">
+      <div style="font-size:64px;margin-bottom:20px">🚀</div>
+      <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:32px;letter-spacing:-1px;margin-bottom:12px">Trip launched!</h2>
+      <p style="color:var(--muted);max-width:360px;line-height:1.6;margin:0 auto 28px;font-size:15px">Your trip is live. Your group will get an invite to vote on the destination.</p>
+      <button class="btn btn-primary" onclick="resetFlow()">Create another trip</button>
+    </div>
+  </div>
+
+  <!-- ══════════ WALLET PAGE ══════════ -->
+  <div class="page" id="page-wallet">
+    <div class="page-header animate-in">
+      <div class="page-eyebrow">Your Wallet</div>
+      <h1 class="page-title">Money in,<br/><em>money back.</em></h1>
+      <p class="page-sub">All deposits held in secure escrow. Funds released when trips conclude or returned when bail votes pass.</p>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card green animate-in"><div class="stat-label">Total in Escrow</div><div class="stat-value">$115</div><div class="stat-sub">Across 3 active trips</div></div>
+      <div class="stat-card orange animate-in" style="animation-delay:0.05s"><div class="stat-label">Returned to You</div><div class="stat-value">$125</div><div class="stat-sub">From 4 completed trips</div></div>
+      <div class="stat-card gold animate-in" style="animation-delay:0.10s"><div class="stat-label">Earned from Bails</div><div class="stat-value">$25</div><div class="stat-sub">1 bail penalty kept</div></div>
+      <div class="stat-card blue animate-in" style="animation-delay:0.15s"><div class="stat-label">Trips Committed</div><div class="stat-value">6</div><div class="stat-sub">Since joining Packt</div></div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card animate-in" style="margin-bottom:20px">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;letter-spacing:-0.3px">Deposit Activity</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">Monthly deposit volume · 2025</div>
+          </div>
+          <div class="badge badge-sage">↑ 48% this month</div>
+        </div>
+        <div class="mini-chart" id="mini-chart"></div>
+        <div style="font-size:13px;color:var(--muted);text-align:center;margin-top:4px" id="chart-label">
+          <strong style="color:var(--ink)">$45</strong> deposited in Apr
+        </div>
+      </div>
+    </div>
+
+    <!-- Escrow -->
+    <div class="card animate-in" style="margin-bottom:20px">
+      <div class="card-body">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;letter-spacing:-0.3px;margin-bottom:16px">Active Escrow</div>
+
+        <div style="margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div><div style="font-weight:500;font-size:14px">Tulum, Mexico 🌴</div><div style="font-size:12px;color:var(--muted)">Jul 18–25 · Your deposit: $40</div></div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px">$360 total</div>
+          </div>
+          <div class="escrow-bar-wrap"><div class="escrow-bar-label"><span>78% committed</span><span>$360 locked</span></div><div class="escrow-bar"><div class="escrow-bar-fill" style="width:78%"></div></div></div>
+          <div class="divider" style="margin-bottom:0"></div>
+        </div>
+
+        <div style="margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div><div style="font-weight:500;font-size:14px">Zion National Park 🏜️</div><div style="font-size:12px;color:var(--muted)">Aug 2–6 · Your deposit: $25</div></div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px">$175 total</div>
+          </div>
+          <div class="escrow-bar-wrap"><div class="escrow-bar-label"><span>57% committed</span><span>$175 locked</span></div><div class="escrow-bar"><div class="escrow-bar-fill" style="width:57%"></div></div></div>
+          <div class="divider" style="margin-bottom:0"></div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div><div style="font-weight:500;font-size:14px">New Orleans, LA 🎷</div><div style="font-size:12px;color:var(--muted)">Sep 12–15 · Your deposit: $50</div></div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px">$250 total</div>
+          </div>
+          <div class="escrow-bar-wrap"><div class="escrow-bar-label"><span>100% committed</span><span>$250 locked</span></div><div class="escrow-bar"><div class="escrow-bar-fill" style="width:100%"></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="card animate-in">
+      <div class="card-body" style="padding-bottom:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;letter-spacing:-0.3px">Transaction History</div>
+          <button class="btn btn-ghost btn-sm">Export CSV</button>
+        </div>
+        <div class="tx-list">
+          <div class="tx-item"><div class="tx-icon green">✈️</div><div class="tx-info"><div class="tx-name">Tulum deposit received</div><div class="tx-date">Apr 22 · Tulum, Mexico</div></div><div class="tx-amount positive">+$40.00</div></div>
+          <div class="tx-item"><div class="tx-icon orange">🏜️</div><div class="tx-info"><div class="tx-name">You committed to Zion trip</div><div class="tx-date">Apr 20 · Zion National Park</div></div><div class="tx-amount negative">-$25.00</div></div>
+          <div class="tx-item"><div class="tx-icon gold">⚖️</div><div class="tx-info"><div class="tx-name">Bail penalty — Chris R.</div><div class="tx-date">Apr 18 · Zion</div></div><div class="tx-amount positive">+$25.00</div></div>
+          <div class="tx-item"><div class="tx-icon green">🎷</div><div class="tx-info"><div class="tx-name">New Orleans deposit locked</div><div class="tx-date">Apr 15 · New Orleans, LA</div></div><div class="tx-amount negative">-$50.00</div></div>
+          <div class="tx-item"><div class="tx-icon green">💸</div><div class="tx-info"><div class="tx-name">Nashville refund completed</div><div class="tx-date">Mar 30 · Nashville trip</div></div><div class="tx-amount positive">+$50.00</div></div>
+          <div class="tx-item"><div class="tx-icon gold">🤝</div><div class="tx-info"><div class="tx-name">Barcelona group committed</div><div class="tx-date">Mar 12 · Barcelona, Spain</div></div><div class="tx-amount positive">+$75.00</div></div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div style="font-size:13px;color:var(--muted)">Showing 6 of 18 transactions</div>
+        <button class="btn btn-secondary btn-sm">Load more</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SETTINGS PAGE ══════════ -->
+  <div class="page" id="page-settings">
+    <div class="page-header animate-in">
+      <div class="page-eyebrow">Trip Settings</div>
+      <h1 class="page-title">Tulum, <em>Mexico</em></h1>
+      <p class="page-sub">Configure rules, members, and deposit logic for your group. Changes apply immediately.</p>
+    </div>
+
+    <div class="two-col">
+      <!-- LEFT -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Deposit -->
+        <div class="card animate-in">
+          <div class="card-body">
+            <div class="settings-section-title"><div class="section-icon">💰</div>Deposit Amount</div>
+            <div class="settings-row" style="padding-top:4px">
+              <div class="settings-row-left">
+                <div class="settings-row-label">Required deposit per person</div>
+                <div class="settings-row-desc">Collected when members hit "Commit." Held in escrow until the trip concludes.</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;margin:20px 0 8px">
+              <div class="stepper">
+                <button class="stepper-btn" onclick="adjustSettingsDeposit(-5)">−</button>
+                <div class="stepper-val" id="settings-deposit-val">$40</div>
+                <button class="stepper-btn" onclick="adjustSettingsDeposit(5)">+</button>
+              </div>
+            </div>
+            <div style="text-align:center;font-size:12px;color:var(--muted)" id="settings-escrow-label">3 committed × $40 = <strong style="color:var(--ink)">$120 in escrow</strong></div>
+          </div>
+        </div>
+
+        <!-- Bail Rules -->
+        <div class="card animate-in">
+          <div class="card-body">
+            <div class="settings-section-title"><div class="section-icon">⚖️</div>Bail Rules</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">When someone bails after committing, how is their deposit handled?</div>
+            <div class="radio-group">
+              <div class="radio-option selected" onclick="selectBail(this)"><div class="radio-dot"></div><div class="radio-text"><div class="radio-label">Majority vote</div><div class="radio-desc">More than half the group votes to keep or return the deposit.</div></div></div>
+              <div class="radio-option" onclick="selectBail(this)"><div class="radio-dot"></div><div class="radio-text"><div class="radio-label">Organizer decides</div><div class="radio-desc">Trip organizer makes the final call — no vote required.</div></div></div>
+              <div class="radio-option" onclick="selectBail(this)"><div class="radio-dot"></div><div class="radio-text"><div class="radio-label">Auto-keep</div><div class="radio-desc">Bail deposit is automatically split among committed members.</div></div></div>
+              <div class="radio-option" onclick="selectBail(this)"><div class="radio-dot"></div><div class="radio-text"><div class="radio-label">Always return</div><div class="radio-desc">Bail deposit is always returned, no questions asked.</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="card animate-in">
+          <div class="card-body">
+            <div class="settings-section-title"><div class="section-icon">🔔</div>Notifications</div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label">Commit deadline reminders</div><div class="settings-row-desc">Nudge maybes 24h before the commit window closes.</div></div><label class="toggle-wrap"><input type="checkbox" class="toggle-input" checked/><div class="toggle-slider"></div></label></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label">New member joined</div><div class="settings-row-desc">Alert when someone votes or commits to your trip.</div></div><label class="toggle-wrap"><input type="checkbox" class="toggle-input" checked/><div class="toggle-slider"></div></label></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label">Bail alerts</div><div class="settings-row-desc">Notify the group when someone submits a bail request.</div></div><label class="toggle-wrap"><input type="checkbox" class="toggle-input" checked/><div class="toggle-slider"></div></label></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label">Auto-release escrow</div><div class="settings-row-desc">Release funds automatically 48h after trip ends.</div></div><label class="toggle-wrap"><input type="checkbox" class="toggle-input"/><div class="toggle-slider"></div></label></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label">Public trip page</div><div class="settings-row-desc">Allow a shareable link for non-members to view (not commit).</div></div><label class="toggle-wrap"><input type="checkbox" class="toggle-input"/><div class="toggle-slider"></div></label></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Members -->
+        <div class="card animate-in">
+          <div class="card-body" style="padding-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <div class="settings-section-title" style="margin-bottom:0"><div class="section-icon">👥</div>Members (5)</div>
+              <button class="btn btn-secondary btn-sm">+ Invite</button>
+            </div>
+            <div class="member-list" id="member-list">
+              <div class="member-item" data-id="1"><div class="member-avatar" style="background:#3d5c35">M</div><div class="member-info"><div class="member-name">Maya K.</div><div class="member-role">Organizer</div></div><div class="member-status"><span class="badge badge-sage">✓ In</span><span style="font-size:11px;color:var(--sage)">💰 Paid</span></div></div>
+              <div class="member-item" data-id="2"><div class="member-avatar" style="background:#c9440f">J</div><div class="member-info"><div class="member-name">Jordan T.</div><div class="member-role">Member</div></div><div class="member-status"><span class="badge badge-sage">✓ In</span><span style="font-size:11px;color:var(--sage)">💰 Paid</span></div><button class="btn btn-ghost btn-icon btn-sm" style="color:var(--muted2);margin-left:4px" onclick="openRemoveModal(2,'Jordan T.',true)" title="Remove member">✕</button></div>
+              <div class="member-item" data-id="3"><div class="member-avatar" style="background:#c49a14">S</div><div class="member-info"><div class="member-name">Sam L.</div><div class="member-role">Member</div></div><div class="member-status"><span class="badge badge-gold">Maybe</span></div><button class="btn btn-ghost btn-icon btn-sm" style="color:var(--muted2);margin-left:4px" onclick="openRemoveModal(3,'Sam L.',false)" title="Remove member">✕</button></div>
+              <div class="member-item" data-id="4"><div class="member-avatar" style="background:#2563a8">P</div><div class="member-info"><div class="member-name">Priya D.</div><div class="member-role">Member</div></div><div class="member-status"><span class="badge badge-sage">✓ In</span><span style="font-size:11px;color:var(--sage)">💰 Paid</span></div><button class="btn btn-ghost btn-icon btn-sm" style="color:var(--muted2);margin-left:4px" onclick="openRemoveModal(4,'Priya D.',true)" title="Remove member">✕</button></div>
+              <div class="member-item" data-id="5"><div class="member-avatar" style="background:#8a5a7a">C</div><div class="member-info"><div class="member-name">Chris R.</div><div class="member-role">Member</div></div><div class="member-status"><span class="badge badge-red">Bailed</span></div><button class="btn btn-ghost btn-icon btn-sm" style="color:var(--muted2);margin-left:4px" onclick="openRemoveModal(5,'Chris R.',false)" title="Remove member">✕</button></div>
+            </div>
+          </div>
+          <div class="card-footer" id="member-footer">
+            <div style="font-size:12px;color:var(--muted)">3 committed · 1 maybe · 1 bailed</div>
+          </div>
+        </div>
+
+        <!-- Trip Details -->
+        <div class="card animate-in">
+          <div class="card-body">
+            <div class="settings-section-title"><div class="section-icon">📋</div>Trip Details</div>
+            <div class="settings-row" style="padding-top:4px"><div class="settings-row-left"><div class="settings-row-label" style="color:var(--muted);font-weight:400;font-size:12px">Trip name</div><div style="font-weight:500;font-size:14px;margin-top:2px">Tulum, Mexico 🌴</div></div><button class="btn btn-ghost btn-sm" style="font-size:12px">Edit</button></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label" style="color:var(--muted);font-weight:400;font-size:12px">Dates</div><div style="font-weight:500;font-size:14px;margin-top:2px">Jul 18–25, 2025</div></div><button class="btn btn-ghost btn-sm" style="font-size:12px">Edit</button></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label" style="color:var(--muted);font-weight:400;font-size:12px">Phase</div><div style="font-weight:500;font-size:14px;margin-top:2px"><span class="badge badge-gold">Voting Open</span></div></div></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label" style="color:var(--muted);font-weight:400;font-size:12px">Created by</div><div style="font-weight:500;font-size:14px;margin-top:2px">Maya K.</div></div></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label" style="color:var(--muted);font-weight:400;font-size:12px">Trip ID</div><div style="font-weight:500;font-size:14px;margin-top:2px">PKT-0042</div></div></div>
+          </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card animate-in" style="border-color:var(--rust-border)">
+          <div class="card-body">
+            <div class="settings-section-title" style="color:var(--rust)"><div class="section-icon" style="background:var(--rust-dim)">⚠️</div>Danger Zone</div>
+            <div class="settings-row" style="padding-top:4px"><div class="settings-row-left"><div class="settings-row-label">Cancel trip</div><div class="settings-row-desc">Returns all deposits. Cannot be undone.</div></div><button class="btn btn-sm" style="background:var(--rust-dim);color:var(--rust);border:1.5px solid var(--rust-border)">Cancel</button></div>
+            <div class="settings-row"><div class="settings-row-left"><div class="settings-row-label">Transfer organizer</div><div class="settings-row-desc">Hand off admin controls to another member.</div></div><button class="btn btn-secondary btn-sm">Transfer</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REMOVE MODAL -->
+  <div class="modal-overlay" id="remove-modal" onclick="closeRemoveModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-icon" style="background:var(--rust-dim);border:1.5px solid var(--rust-border)">👋</div>
+      <h2 id="modal-title">Remove member?</h2>
+      <p id="modal-body">They'll be removed from the trip and notified.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeRemoveModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmRemove()">Remove</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── TAB SWITCHING ──
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ── WALLET CHART ──
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun"];
+const MONTH_DATA = [12,18,8,45,22,30];
+let activeBar = 3;
+
+function buildChart() {
+  const maxVal = Math.max(...MONTH_DATA);
+  const chart = document.getElementById('mini-chart');
+  chart.innerHTML = '';
+  MONTHS.forEach((m, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'mini-bar-wrap';
+    const bar = document.createElement('div');
+    bar.className = 'mini-bar' + (i === activeBar ? ' active' : '');
+    bar.style.height = ((MONTH_DATA[i] / maxVal) * 72) + 'px';
+    bar.title = '$' + MONTH_DATA[i];
+    bar.onclick = () => { activeBar = i; buildChart(); updateChartLabel(); };
+    const lbl = document.createElement('span');
+    lbl.className = 'mini-bar-label';
+    lbl.textContent = m;
+    wrap.appendChild(bar);
+    wrap.appendChild(lbl);
+    chart.appendChild(wrap);
+  });
+}
+
+function updateChartLabel() {
+  document.getElementById('chart-label').innerHTML =
+    '<strong style="color:var(--ink)">$' + MONTH_DATA[activeBar] + '</strong> deposited in ' + MONTHS[activeBar];
+}
+
+buildChart();
+
+// ── NEW TRIP FLOW ──
+let currentStep = 0;
+let selectedLocation = null;
+let depositAmt = 30;
+const locationNames = {1:"Tulum, Mexico",2:"Banff, Canada",3:"NYC, New York",4:"Lisbon, Portugal"};
+
+function selectLocation(id, el) {
+  document.querySelectorAll('.location-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedLocation = id;
+  document.getElementById('step0-next').disabled = false;
+  document.getElementById('loc-count-label').textContent = '1 location selected';
+}
+
+function goToStep(n) {
+  document.querySelectorAll('.flow-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('fpanel-' + n).classList.add('active');
+  for (let i = 0; i < 4; i++) {
+    const s = document.getElementById('fstep-' + i);
+    s.classList.remove('done', 'active');
+    if (i < n) { s.classList.add('done'); s.querySelector('.flow-step-dot').textContent = '✓'; }
+    else if (i === n) { s.classList.add('active'); s.querySelector('.flow-step-dot').textContent = i + 1; }
+    else { s.querySelector('.flow-step-dot').textContent = i + 1; }
+  }
+  if (n === 3) populateReview();
+  currentStep = n;
+}
+
+function populateReview() {
+  const name = document.getElementById('trip-name-input').value || '(untitled)';
+  const dates = document.getElementById('trip-dates-input').value || 'TBD';
+  const inviteCount = document.querySelectorAll('#invited-list .invited-chip').length;
+  document.getElementById('review-dest').textContent = (locationNames[selectedLocation] || '—') + ' + 3 others';
+  document.getElementById('review-name').textContent = name;
+  document.getElementById('review-dates').textContent = dates;
+  document.getElementById('review-deposit').textContent = '$' + depositAmt;
+  document.getElementById('review-invites').textContent = inviteCount + ' people';
+}
+
+function adjustDeposit(delta) {
+  depositAmt = Math.min(500, Math.max(5, depositAmt + delta));
+  document.getElementById('deposit-val').textContent = '$' + depositAmt;
+}
+
+function addInvite() {
+  const input = document.getElementById('invite-email-input');
+  const val = input.value.trim();
+  if (!val) return;
+  const list = document.getElementById('invited-list');
+  const chip = document.createElement('div');
+  chip.className = 'invited-chip';
+  chip.innerHTML = val + '<button onclick="removeInvite(this)">✕</button>';
+  list.appendChild(chip);
+  input.value = '';
+}
+
+function removeInvite(btn) { btn.parentElement.remove(); }
+
+function launchTrip() {
+  document.querySelectorAll('.flow-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('fpanel-launched').classList.add('active');
+  document.getElementById('flow-steps').style.display = 'none';
+}
+
+function resetFlow() {
+  selectedLocation = null;
+  depositAmt = 30;
+  document.getElementById('deposit-val').textContent = '$30';
+  document.getElementById('trip-name-input').value = '';
+  document.getElementById('trip-dates-input').value = '';
+  document.getElementById('step0-next').disabled = true;
+  document.getElementById('loc-count-label').textContent = 'Pick at least 1';
+  document.querySelectorAll('.location-option').forEach(o => o.classList.remove('selected'));
+  document.getElementById('flow-steps').style.display = 'flex';
+  goToStep(0);
+}
+
+// ── SETTINGS ──
+let settingsDeposit = 40;
+
+function adjustSettingsDeposit(delta) {
+  settingsDeposit = Math.min(500, Math.max(5, settingsDeposit + delta));
+  document.getElementById('settings-deposit-val').textContent = '$' + settingsDeposit;
+  const committed = document.querySelectorAll('#member-list .member-item').length;
+  document.getElementById('settings-escrow-label').innerHTML =
+    committed + ' committed × $' + settingsDeposit + ' = <strong style="color:var(--ink)">$' + (committed * settingsDeposit) + ' in escrow</strong>';
+}
+
+function selectBail(el) {
+  document.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+let removeTarget = null;
+
+function openRemoveModal(id, name, hasPaid) {
+  removeTarget = id;
+  document.getElementById('modal-title').textContent = 'Remove ' + name + '?';
+  document.getElementById('modal-body').textContent = "They'll be removed from the trip and notified." +
+    (hasPaid ? " Their committed deposit will be returned automatically." : "");
+  document.getElementById('remove-modal').classList.add('open');
+}
+
+function closeRemoveModal() {
+  document.getElementById('remove-modal').classList.remove('open');
+  removeTarget = null;
+}
+
+function confirmRemove() {
+  if (removeTarget) {
+    const item = document.querySelector('#member-list .member-item[data-id="' + removeTarget + '"]');
+    if (item) item.remove();
+  }
+  closeRemoveModal();
+}
+</script>
+</body>
+</html>
