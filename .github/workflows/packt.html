@@ -1,0 +1,1014 @@
+import { useState } from “react”;
+
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const css = `
+@import url(‘https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap’);
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+–ink: #0f0e0d;
+–paper: #f5f0e8;
+–sand: #e8dfc8;
+–sand2: #dfd5bc;
+–rust: #c9440f;
+–rust-dim: #c9440f18;
+–rust-border: #c9440f35;
+–gold: #c49a14;
+–gold-dim: #c49a1415;
+–sage: #3d5c35;
+–sage-dim: #3d5c3515;
+–muted: #7a7060;
+–muted2: #a09880;
+–card: #faf7f2;
+–white: #ffffff;
+–border: #d8d0bc;
+–border2: #ece5d4;
+–red: #d63030;
+–red-dim: #d6303012;
+–blue: #2563a8;
+–blue-dim: #2563a812;
+–radius-sm: 10px;
+–radius-md: 14px;
+–radius-lg: 20px;
+}
+
+body { background: var(–paper); font-family: ‘DM Sans’, sans-serif; color: var(–ink); -webkit-font-smoothing: antialiased; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(–sand2); border-radius: 4px; }
+
+/* ── LAYOUT ── */
+.app { min-height: 100vh; display: flex; flex-direction: column; background: var(–paper); }
+
+/* ── NAV ── */
+.nav {
+display: flex; align-items: center; justify-content: space-between;
+padding: 16px 28px; border-bottom: 1.5px solid var(–border);
+background: var(–paper); position: sticky; top: 0; z-index: 100;
+backdrop-filter: blur(12px);
+}
+.nav-logo { font-family: ‘Syne’, sans-serif; font-weight: 800; font-size: 21px; letter-spacing: -0.5px; cursor: pointer; }
+.nav-logo span { color: var(–rust); }
+.nav-tabs { display: flex; gap: 2px; background: var(–sand); border-radius: 100px; padding: 3px; }
+.nav-tab {
+padding: 7px 18px; border-radius: 100px; font-size: 13px; font-weight: 500;
+cursor: pointer; border: none; background: none; color: var(–muted);
+transition: all 0.18s; font-family: ‘DM Sans’, sans-serif;
+}
+.nav-tab.active { background: var(–ink); color: var(–paper); }
+.nav-tab:not(.active):hover { color: var(–ink); }
+.nav-avatar {
+width: 34px; height: 34px; border-radius: 50%; background: var(–rust); color: white;
+display: flex; align-items: center; justify-content: center;
+font-family: ‘Syne’, sans-serif; font-weight: 700; font-size: 13px; cursor: pointer;
+border: 2px solid var(–rust-border);
+}
+
+/* ── PAGE WRAPPER ── */
+.page { max-width: 860px; margin: 0 auto; padding: 36px 28px 80px; width: 100%; }
+.page-header { margin-bottom: 32px; }
+.page-eyebrow {
+display: inline-flex; align-items: center; gap: 8px; font-size: 11px;
+font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: var(–rust);
+margin-bottom: 10px;
+}
+.page-eyebrow::before { content:’’; width: 18px; height: 1.5px; background: var(–rust); }
+.page-title { font-family: ‘Syne’, sans-serif; font-weight: 800; font-size: clamp(26px, 4vw, 40px); letter-spacing: -1px; line-height: 1.05; }
+.page-title em { font-style: italic; color: var(–rust); }
+.page-sub { color: var(–muted); font-size: 15px; margin-top: 8px; line-height: 1.6; }
+
+/* ── CARDS ── */
+.card {
+background: var(–card); border: 1.5px solid var(–border);
+border-radius: var(–radius-lg); overflow: hidden;
+transition: box-shadow 0.2s;
+}
+.card:hover { box-shadow: 0 6px 28px #0f0e0d0e; }
+.card-body { padding: 24px 26px; }
+.card-footer {
+padding: 14px 26px; border-top: 1.5px solid var(–border2);
+display: flex; align-items: center; justify-content: space-between;
+background: var(–paper);
+}
+
+/* ── BUTTONS ── */
+.btn {
+display: inline-flex; align-items: center; gap: 7px;
+padding: 10px 20px; border-radius: 100px;
+font-family: ‘DM Sans’, sans-serif; font-weight: 600; font-size: 13px;
+cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap;
+}
+.btn-primary { background: var(–rust); color: white; }
+.btn-primary:hover { background: #b03a0a; transform: translateY(-1px); }
+.btn-secondary { background: none; border: 1.5px solid var(–border); color: var(–ink); }
+.btn-secondary:hover { border-color: var(–ink); }
+.btn-ghost { background: none; color: var(–muted); padding: 8px 14px; }
+.btn-ghost:hover { color: var(–ink); background: var(–sand); border-radius: 8px; }
+.btn-sage { background: var(–sage); color: white; }
+.btn-sage:hover { background: #2e4728; }
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+.btn-icon { padding: 8px; border-radius: 10px; width: 34px; height: 34px; justify-content: center; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+/* ── BADGES ── */
+.badge {
+display: inline-flex; align-items: center; gap: 5px;
+font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;
+padding: 4px 10px; border-radius: 100px;
+}
+.badge-rust { background: var(–rust-dim); color: var(–rust); border: 1px solid var(–rust-border); }
+.badge-sage { background: var(–sage-dim); color: var(–sage); border: 1px solid #3d5c3530; }
+.badge-gold { background: var(–gold-dim); color: var(–gold); border: 1px solid #c49a1430; }
+.badge-blue { background: var(–blue-dim); color: var(–blue); border: 1px solid #2563a825; }
+.badge-red { background: var(–red-dim); color: var(–red); border: 1px solid #d6303025; }
+
+/* ── DIVIDER ── */
+.divider { height: 1.5px; background: var(–border2); margin: 20px 0; }
+
+/* ── STAT BLOCKS ── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+.stat-card {
+background: var(–card); border: 1.5px solid var(–border); border-radius: var(–radius-md);
+padding: 20px 22px; position: relative; overflow: hidden;
+}
+.stat-card::after {
+content: ‘’; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.stat-card.green::after { background: var(–sage); }
+.stat-card.orange::after { background: var(–rust); }
+.stat-card.gold::after { background: var(–gold); }
+.stat-card.blue::after { background: var(–blue); }
+.stat-label { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(–muted); margin-bottom: 8px; }
+.stat-value { font-family: ‘Syne’, sans-serif; font-weight: 800; font-size: 32px; letter-spacing: -1px; line-height: 1; }
+.stat-sub { font-size: 12px; color: var(–muted); margin-top: 6px; }
+
+/* ── TRANSACTION LIST ── */
+.tx-list { display: flex; flex-direction: column; gap: 2px; }
+.tx-item {
+display: flex; align-items: center; gap: 14px; padding: 14px 0;
+border-bottom: 1px solid var(–border2);
+}
+.tx-item:last-child { border-bottom: none; }
+.tx-icon {
+width: 38px; height: 38px; border-radius: 11px;
+display: flex; align-items: center; justify-content: center; font-size: 17px;
+flex-shrink: 0;
+}
+.tx-icon.green { background: var(–sage-dim); }
+.tx-icon.orange { background: var(–rust-dim); }
+.tx-icon.gold { background: var(–gold-dim); }
+.tx-info { flex: 1; }
+.tx-name { font-weight: 500; font-size: 14px; }
+.tx-date { font-size: 12px; color: var(–muted); margin-top: 2px; }
+.tx-amount { font-family: ‘Syne’, sans-serif; font-weight: 700; font-size: 15px; }
+.tx-amount.positive { color: var(–sage); }
+.tx-amount.negative { color: var(–rust); }
+.tx-amount.pending { color: var(–gold); }
+
+/* ── ESCROW BAR ── */
+.escrow-bar-wrap { margin: 20px 0; }
+.escrow-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(–muted); margin-bottom: 8px; }
+.escrow-bar { height: 8px; background: var(–sand); border-radius: 100px; overflow: hidden; }
+.escrow-bar-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(–sage), #6a9e5f); transition: width 0.6s ease; }
+
+/* ── CHART ── */
+.mini-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; margin: 16px 0 8px; }
+.mini-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.mini-bar {
+width: 100%; border-radius: 5px 5px 0 0; background: var(–sage-dim);
+border: 1.5px solid #3d5c3530; transition: all 0.3s;
+cursor: pointer; position: relative;
+}
+.mini-bar:hover { background: var(–sage-dim); border-color: var(–sage); }
+.mini-bar.active { background: var(–sage); border-color: var(–sage); }
+.mini-bar-label { font-size: 10px; color: var(–muted); font-weight: 500; }
+
+/* ── SETTINGS ── */
+.settings-section { margin-bottom: 32px; }
+.settings-section-title {
+font-family: ‘Syne’, sans-serif; font-weight: 700; font-size: 16px;
+letter-spacing: -0.3px; margin-bottom: 14px;
+display: flex; align-items: center; gap: 10px;
+}
+.settings-section-title .section-icon {
+width: 28px; height: 28px; border-radius: 8px;
+display: flex; align-items: center; justify-content: center;
+font-size: 14px; background: var(–sand);
+}
+.settings-row {
+display: flex; align-items: center; justify-content: space-between;
+padding: 16px 0; border-bottom: 1px solid var(–border2); gap: 16px;
+}
+.settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+.settings-row-left { flex: 1; }
+.settings-row-label { font-weight: 500; font-size: 14px; margin-bottom: 3px; }
+.settings-row-desc { font-size: 12px; color: var(–muted); line-height: 1.5; }
+
+/* ── TOGGLE ── */
+.toggle-wrap { position: relative; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
+.toggle-input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider {
+position: absolute; inset: 0; background: var(–sand2);
+border-radius: 100px; transition: 0.2s; border: 1.5px solid var(–border);
+}
+.toggle-slider::before {
+content: ‘’; position: absolute; width: 16px; height: 16px;
+border-radius: 50%; background: white; top: 2px; left: 2px;
+transition: 0.2s; box-shadow: 0 1px 4px #0003;
+}
+.toggle-input:checked + .toggle-slider { background: var(–sage); border-color: var(–sage); }
+.toggle-input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+/* ── STEPPER ── */
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper-btn {
+width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(–border);
+background: var(–card); font-size: 17px; cursor: pointer;
+display: flex; align-items: center; justify-content: center;
+transition: all 0.15s; line-height: 1;
+}
+.stepper-btn:hover { border-color: var(–ink); background: var(–sand); }
+.stepper-val {
+font-family: ‘Syne’, sans-serif; font-weight: 700; font-size: 18px;
+min-width: 52px; text-align: center; letter-spacing: -0.5px;
+}
+.stepper-unit { font-size: 12px; color: var(–muted); margin-left: -4px; }
+
+/* ── MEMBER LIST ── */
+.member-list { display: flex; flex-direction: column; gap: 2px; }
+.member-item {
+display: flex; align-items: center; gap: 12px; padding: 13px 0;
+border-bottom: 1px solid var(–border2); transition: opacity 0.15s;
+}
+.member-item:last-child { border-bottom: none; }
+.member-avatar {
+width: 36px; height: 36px; border-radius: 50%;
+display: flex; align-items: center; justify-content: center;
+font-family: ‘Syne’, sans-serif; font-weight: 700; font-size: 13px; color: white; flex-shrink: 0;
+}
+.member-info { flex: 1; }
+.member-name { font-weight: 500; font-size: 14px; }
+.member-role { font-size: 12px; color: var(–muted); margin-top: 1px; }
+.member-status { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+/* ── RADIO GROUP ── */
+.radio-group { display: flex; flex-direction: column; gap: 8px; }
+.radio-option {
+display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+border: 1.5px solid var(–border); border-radius: var(–radius-md);
+cursor: pointer; transition: all 0.15s;
+}
+.radio-option:hover { border-color: var(–ink); }
+.radio-option.selected { border-color: var(–sage); background: var(–sage-dim); }
+.radio-dot {
+width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(–border);
+display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s;
+}
+.radio-option.selected .radio-dot { border-color: var(–sage); background: var(–sage); }
+.radio-option.selected .radio-dot::after { content: ‘’; width: 6px; height: 6px; border-radius: 50%; background: white; }
+.radio-text { flex: 1; }
+.radio-label { font-weight: 500; font-size: 14px; }
+.radio-desc { font-size: 12px; color: var(–muted); margin-top: 2px; }
+
+/* ── TRIP CREATION FLOW ── */
+.flow-steps { display: flex; gap: 0; margin-bottom: 28px; }
+.flow-step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+.flow-step:not(:last-child)::after {
+content: ‘’; position: absolute; top: 15px; left: 50%; width: 100%; height: 1.5px;
+background: var(–border); z-index: 0;
+}
+.flow-step-dot {
+width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(–border);
+background: var(–card); display: flex; align-items: center; justify-content: center;
+font-size: 12px; font-weight: 700; z-index: 1; transition: all 0.2s; position: relative;
+}
+.flow-step.done .flow-step-dot { background: var(–sage); border-color: var(–sage); color: white; }
+.flow-step.active .flow-step-dot { background: var(–ink); border-color: var(–ink); color: white; }
+.flow-step-label { font-size: 11px; color: var(–muted); margin-top: 6px; text-align: center; font-weight: 500; }
+.flow-step.active .flow-step-label { color: var(–ink); font-weight: 600; }
+
+.location-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 16px 0; }
+.location-option {
+padding: 16px; border: 1.5px solid var(–border); border-radius: var(–radius-md);
+cursor: pointer; transition: all 0.15s; background: var(–card);
+}
+.location-option:hover { border-color: var(–ink); transform: translateY(-1px); }
+.location-option.selected { border-color: var(–rust); background: var(–rust-dim); }
+.location-emoji { font-size: 28px; display: block; margin-bottom: 8px; }
+.location-name { font-weight: 600; font-size: 14px; }
+.location-sub { font-size: 12px; color: var(–muted); margin-top: 3px; }
+
+/* ── INVITE ROW ── */
+.invite-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.invite-input {
+flex: 1; padding: 11px 16px; border: 1.5px solid var(–border); border-radius: 100px;
+background: var(–card); font-family: ‘DM Sans’, sans-serif; font-size: 14px;
+outline: none; transition: border-color 0.15s; color: var(–ink);
+}
+.invite-input:focus { border-color: var(–ink); }
+.invited-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.invited-chip {
+display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+background: var(–sand); border-radius: 100px; font-size: 13px; font-weight: 500;
+}
+.invited-chip button { background: none; border: none; cursor: pointer; color: var(–muted); font-size: 14px; line-height: 1; padding: 0 0 0 2px; }
+.invited-chip button:hover { color: var(–rust); }
+
+/* ── MODAL ── */
+.modal-overlay {
+position: fixed; inset: 0; background: #0f0e0d70; backdrop-filter: blur(6px);
+display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px;
+animation: fadein 0.18s ease;
+}
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+background: var(–card); border: 1.5px solid var(–border); border-radius: var(–radius-lg);
+padding: 32px; max-width: 440px; width: 100%;
+animation: slideup 0.22s ease;
+}
+@keyframes slideup { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 18px; }
+.modal h2 { font-family: ‘Syne’, sans-serif; font-weight: 700; font-size: 21px; letter-spacing: -0.4px; margin-bottom: 8px; }
+.modal p { color: var(–muted); font-size: 14px; line-height: 1.6; margin-bottom: 22px; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; justify-content: center; border-radius: 12px; padding: 13px; }
+
+/* ── NOTIFICATIONS ── */
+.notif-dot {
+width: 7px; height: 7px; border-radius: 50%; background: var(–rust);
+position: absolute; top: -1px; right: -1px;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: fadeInUp 0.3s ease forwards; }
+.animate-in:nth-child(1) { animation-delay: 0.05s; opacity: 0; }
+.animate-in:nth-child(2) { animation-delay: 0.10s; opacity: 0; }
+.animate-in:nth-child(3) { animation-delay: 0.15s; opacity: 0; }
+.animate-in:nth-child(4) { animation-delay: 0.20s; opacity: 0; }
+`;
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const TRANSACTIONS = [
+{ id:1, icon:“✈️”, type:“green”,  name:“Tulum deposit received”,        date:“Apr 22 · Tulum, Mexico”,     amount:”+$40.00”, cls:“positive” },
+{ id:2, icon:“🏜️”, type:“orange”, name:“You committed to Zion trip”,    date:“Apr 20 · Zion National Park”, amount:”-$25.00”, cls:“negative” },
+{ id:3, icon:“⚖️”, type:“gold”,   name:“Bail penalty — Chris R.”,       date:“Apr 18 · Zion”,               amount:”+$25.00”, cls:“positive” },
+{ id:4, icon:“🎷”, type:“green”,  name:“New Orleans deposit locked”,     date:“Apr 15 · New Orleans, LA”,   amount:”-$50.00”, cls:“negative” },
+{ id:5, icon:“💸”, type:“green”,  name:“Nashville refund completed”,     date:“Mar 30 · Nashville trip”,    amount:”+$50.00”, cls:“positive” },
+{ id:6, icon:“🤝”, type:“gold”,   name:“Barcelona group committed”,      date:“Mar 12 · Barcelona, Spain”,  amount:”+$75.00”, cls:“positive” },
+];
+
+const MONTHS = [“Jan”,“Feb”,“Mar”,“Apr”,“May”,“Jun”];
+const MONTH_DATA = [12, 18, 8, 45, 22, 30];
+
+const MEMBERS = [
+{ id:1, name:“Maya K.”,    role:“Organizer”, status:“committed”, deposit:true,  color:”#3d5c35”, initial:“M” },
+{ id:2, name:“Jordan T.”,  role:“Member”,    status:“committed”, deposit:true,  color:”#c9440f”, initial:“J” },
+{ id:3, name:“Sam L.”,     role:“Member”,    status:“maybe”,     deposit:false, color:”#c49a14”, initial:“S” },
+{ id:4, name:“Priya D.”,   role:“Member”,    status:“committed”, deposit:true,  color:”#2563a8”, initial:“P” },
+{ id:5, name:“Chris R.”,   role:“Member”,    status:“bailed”,    deposit:false, color:”#8a5a7a”, initial:“C” },
+];
+
+const LOCATIONS = [
+{ id:1, emoji:“🌴”, name:“Tulum, Mexico”,        sub:“Beach + cenotes” },
+{ id:2, emoji:“🏔️”, name:“Banff, Canada”,         sub:“Mountains + lakes” },
+{ id:3, emoji:“🏙️”, name:“NYC, New York”,         sub:“City vibes” },
+{ id:4, emoji:“🌊”, name:“Lisbon, Portugal”,      sub:“Culture + coast” },
+];
+
+// ─── WALLET PAGE ─────────────────────────────────────────────────────────────
+function WalletPage() {
+const [activeBar, setActiveBar] = useState(3);
+const maxVal = Math.max(…MONTH_DATA);
+
+return (
+<div className="page">
+<div className="page-header animate-in">
+<div className="page-eyebrow">Your Wallet</div>
+<h1 className="page-title">Money in,<br/><em>money back.</em></h1>
+<p className="page-sub">All deposits held in secure escrow. Funds released when trips conclude or returned when bail votes pass.</p>
+</div>
+
+```
+  {/* STAT GRID */}
+  <div className="stat-grid">
+    {[
+      { label:"Total in Escrow",  value:"$115", sub:"Across 3 active trips", accent:"green" },
+      { label:"Returned to You",  value:"$125", sub:"From 4 completed trips", accent:"orange" },
+      { label:"Earned from Bails",value:"$25",  sub:"1 bail penalty kept",   accent:"gold" },
+      { label:"Trips Committed",  value:"6",    sub:"Since joining Packt",   accent:"blue" },
+    ].map((s,i) => (
+      <div key={i} className={`stat-card ${s.accent} animate-in`} style={{animationDelay:`${0.05+i*0.05}s`}}>
+        <div className="stat-label">{s.label}</div>
+        <div className="stat-value">{s.value}</div>
+        <div className="stat-sub">{s.sub}</div>
+      </div>
+    ))}
+  </div>
+
+  {/* ACTIVITY CHART */}
+  <div className="card animate-in" style={{marginBottom:20}}>
+    <div className="card-body">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+        <div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,letterSpacing:-0.3}}>Deposit Activity</div>
+          <div style={{fontSize:12,color:"var(--muted)",marginTop:3}}>Monthly deposit volume · 2025</div>
+        </div>
+        <div className="badge badge-sage">↑ 48% this month</div>
+      </div>
+      <div className="mini-chart">
+        {MONTHS.map((m,i) => (
+          <div key={i} className="mini-bar-wrap">
+            <div
+              className={`mini-bar ${activeBar===i?"active":""}`}
+              style={{height:`${(MONTH_DATA[i]/maxVal)*72}px`}}
+              onClick={()=>setActiveBar(i)}
+              title={`$${MONTH_DATA[i]}`}
+            />
+            <span className="mini-bar-label">{m}</span>
+          </div>
+        ))}
+      </div>
+      {activeBar !== null && (
+        <div style={{fontSize:13,color:"var(--muted)",textAlign:"center",marginTop:4}}>
+          <strong style={{color:"var(--ink)"}}>${MONTH_DATA[activeBar]}</strong> deposited in {MONTHS[activeBar]}
+        </div>
+      )}
+    </div>
+  </div>
+
+  {/* ESCROW BREAKDOWN */}
+  <div className="card animate-in" style={{marginBottom:20}}>
+    <div className="card-body">
+      <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,letterSpacing:-0.3,marginBottom:16}}>Active Escrow</div>
+      {[
+        { trip:"Tulum, Mexico 🌴",       amount:40, total:360, pct:78, date:"Jul 18–25" },
+        { trip:"Zion National Park 🏜️",  amount:25, total:175, pct:57, date:"Aug 2–6" },
+        { trip:"New Orleans, LA 🎷",      amount:50, total:250, pct:100, date:"Sep 12–15" },
+      ].map((e,i) => (
+        <div key={i} style={{marginBottom: i<2 ? 18 : 0}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div>
+              <div style={{fontWeight:500,fontSize:14}}>{e.trip}</div>
+              <div style={{fontSize:12,color:"var(--muted)"}}>{e.date} · Your deposit: ${e.amount}</div>
+            </div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16}}>${e.total} total</div>
+          </div>
+          <div className="escrow-bar-wrap" style={{margin:0}}>
+            <div className="escrow-bar-label">
+              <span>{e.pct}% committed</span>
+              <span>${e.total} locked</span>
+            </div>
+            <div className="escrow-bar">
+              <div className="escrow-bar-fill" style={{width:`${e.pct}%`}}/>
+            </div>
+          </div>
+          {i < 2 && <div className="divider" style={{marginBottom:0}}/>}
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* TRANSACTION HISTORY */}
+  <div className="card animate-in">
+    <div className="card-body" style={{paddingBottom:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,letterSpacing:-0.3}}>Transaction History</div>
+        <button className="btn btn-ghost btn-sm">Export CSV</button>
+      </div>
+      <div className="tx-list">
+        {TRANSACTIONS.map(tx => (
+          <div key={tx.id} className="tx-item">
+            <div className={`tx-icon ${tx.type}`}>{tx.icon}</div>
+            <div className="tx-info">
+              <div className="tx-name">{tx.name}</div>
+              <div className="tx-date">{tx.date}</div>
+            </div>
+            <div className={`tx-amount ${tx.cls}`}>{tx.amount}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div className="card-footer">
+      <div style={{fontSize:13,color:"var(--muted)"}}>Showing 6 of 18 transactions</div>
+      <button className="btn btn-secondary btn-sm">Load more</button>
+    </div>
+  </div>
+</div>
+```
+
+);
+}
+
+// ─── GROUP SETTINGS PAGE ──────────────────────────────────────────────────────
+function SettingsPage() {
+const [deposit, setDeposit] = useState(40);
+const [bailRule, setBailRule] = useState(“majority”);
+const [toggles, setToggles] = useState({ reminders:true, newMember:true, bailAlert:true, autoRelease:false, publicTrip:false });
+const [removeModal, setRemoveModal] = useState(null);
+const [members, setMembers] = useState(MEMBERS);
+
+const toggle = (k) => setToggles(t => ({…t, [k]: !t[k]}));
+
+const confirmRemove = () => {
+setMembers(m => m.filter(x => x.id !== removeModal.id));
+setRemoveModal(null);
+};
+
+return (
+<div className="page">
+<div className="page-header animate-in">
+<div className="page-eyebrow">Trip Settings</div>
+<h1 className="page-title">Tulum, <em>Mexico</em></h1>
+<p className="page-sub">Configure rules, members, and deposit logic for your group. Changes apply immediately.</p>
+</div>
+
+```
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,alignItems:"start"}}>
+
+    {/* LEFT COLUMN */}
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+
+      {/* DEPOSIT SETTINGS */}
+      <div className="card animate-in">
+        <div className="card-body">
+          <div className="settings-section-title">
+            <div className="section-icon">💰</div>
+            Deposit Amount
+          </div>
+          <div className="settings-row" style={{paddingTop:4}}>
+            <div className="settings-row-left">
+              <div className="settings-row-label">Required deposit per person</div>
+              <div className="settings-row-desc">Collected when members hit "Commit." Held in escrow until the trip concludes.</div>
+            </div>
+          </div>
+          <div style={{display:"flex",justifyContent:"center",margin:"20px 0 8px"}}>
+            <div className="stepper">
+              <button className="stepper-btn" onClick={()=>setDeposit(d=>Math.max(5,d-5))}>−</button>
+              <div className="stepper-val">${deposit}</div>
+              <button className="stepper-btn" onClick={()=>setDeposit(d=>Math.min(500,d+5))}>+</button>
+            </div>
+          </div>
+          <div style={{textAlign:"center",fontSize:12,color:"var(--muted)"}}>
+            {members.filter(m=>m.status==="committed").length} committed × ${deposit} = <strong style={{color:"var(--ink)"}}>${members.filter(m=>m.status==="committed").length * deposit} in escrow</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* BAIL RULES */}
+      <div className="card animate-in">
+        <div className="card-body">
+          <div className="settings-section-title">
+            <div className="section-icon">⚖️</div>
+            Bail Rules
+          </div>
+          <div style={{fontSize:13,color:"var(--muted)",marginBottom:14,lineHeight:1.6}}>
+            When someone bails after committing, how is their deposit handled?
+          </div>
+          <div className="radio-group">
+            {[
+              { val:"majority",    label:"Majority vote",      desc:"More than half the group votes to keep or return the deposit." },
+              { val:"organizer",   label:"Organizer decides",  desc:"Trip organizer makes the final call — no vote required." },
+              { val:"auto-keep",   label:"Auto-keep",          desc:"Bail deposit is automatically split among committed members." },
+              { val:"auto-return", label:"Always return",      desc:"Bail deposit is always returned, no questions asked." },
+            ].map(opt => (
+              <div key={opt.val} className={`radio-option ${bailRule===opt.val?"selected":""}`} onClick={()=>setBailRule(opt.val)}>
+                <div className="radio-dot"/>
+                <div className="radio-text">
+                  <div className="radio-label">{opt.label}</div>
+                  <div className="radio-desc">{opt.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* NOTIFICATIONS */}
+      <div className="card animate-in">
+        <div className="card-body">
+          <div className="settings-section-title">
+            <div className="section-icon">🔔</div>
+            Notifications
+          </div>
+          {[
+            { key:"reminders",  label:"Commit deadline reminders", desc:"Nudge maybes 24h before the commit window closes." },
+            { key:"newMember",  label:"New member joined",         desc:"Alert when someone votes or commits to your trip." },
+            { key:"bailAlert",  label:"Bail alerts",               desc:"Notify the group when someone submits a bail request." },
+            { key:"autoRelease",label:"Auto-release escrow",       desc:"Release funds automatically 48h after trip ends." },
+            { key:"publicTrip", label:"Public trip page",          desc:"Allow a shareable link for non-members to view (not commit)." },
+          ].map(row => (
+            <div key={row.key} className="settings-row">
+              <div className="settings-row-left">
+                <div className="settings-row-label">{row.label}</div>
+                <div className="settings-row-desc">{row.desc}</div>
+              </div>
+              <label className="toggle-wrap">
+                <input type="checkbox" className="toggle-input" checked={toggles[row.key]} onChange={()=>toggle(row.key)}/>
+                <div className="toggle-slider"/>
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* RIGHT COLUMN */}
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+
+      {/* MEMBER MANAGEMENT */}
+      <div className="card animate-in">
+        <div className="card-body" style={{paddingBottom:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div className="settings-section-title" style={{marginBottom:0}}>
+              <div className="section-icon">👥</div>
+              Members ({members.length})
+            </div>
+            <button className="btn btn-secondary btn-sm">+ Invite</button>
+          </div>
+          <div className="member-list">
+            {members.map(m => (
+              <div key={m.id} className="member-item">
+                <div className="member-avatar" style={{background:m.color}}>{m.initial}</div>
+                <div className="member-info">
+                  <div className="member-name">{m.name}</div>
+                  <div className="member-role">{m.role}</div>
+                </div>
+                <div className="member-status">
+                  <span className={`badge ${
+                    m.status==="committed" ? "badge-sage" :
+                    m.status==="maybe" ? "badge-gold" : "badge-red"
+                  }`}>
+                    {m.status==="committed"?"✓ In":m.status==="maybe"?"Maybe":"Bailed"}
+                  </span>
+                  {m.deposit && <span style={{fontSize:11,color:"var(--sage)"}}>💰 Paid</span>}
+                </div>
+                {m.role !== "Organizer" && (
+                  <button
+                    className="btn btn-ghost btn-icon btn-sm"
+                    style={{color:"var(--muted2)",marginLeft:4}}
+                    onClick={()=>setRemoveModal(m)}
+                    title="Remove member">✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card-footer">
+          <div style={{fontSize:12,color:"var(--muted)"}}>
+            {members.filter(m=>m.status==="committed").length} committed · {members.filter(m=>m.status==="maybe").length} maybe · {members.filter(m=>m.status==="bailed").length} bailed
+          </div>
+        </div>
+      </div>
+
+      {/* TRIP DETAILS */}
+      <div className="card animate-in">
+        <div className="card-body">
+          <div className="settings-section-title">
+            <div className="section-icon">📋</div>
+            Trip Details
+          </div>
+          {[
+            { label:"Trip name",     value:"Tulum, Mexico 🌴", editable:true },
+            { label:"Dates",         value:"Jul 18–25, 2025",  editable:true },
+            { label:"Phase",         value:<span className="badge badge-gold">Voting Open</span>, editable:false },
+            { label:"Created by",    value:"Maya K.",           editable:false },
+            { label:"Trip ID",       value:"PKT-0042",          editable:false },
+          ].map((row,i) => (
+            <div key={i} className="settings-row">
+              <div className="settings-row-left">
+                <div className="settings-row-label" style={{color:"var(--muted)",fontWeight:400,fontSize:12}}>{row.label}</div>
+                <div style={{fontWeight:500,fontSize:14,marginTop:2}}>{row.value}</div>
+              </div>
+              {row.editable && <button className="btn btn-ghost btn-sm" style={{fontSize:12}}>Edit</button>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* DANGER ZONE */}
+      <div className="card animate-in" style={{borderColor:"var(--rust-border)"}}>
+        <div className="card-body">
+          <div className="settings-section-title" style={{color:"var(--rust)"}}>
+            <div className="section-icon" style={{background:"var(--rust-dim)"}}>⚠️</div>
+            Danger Zone
+          </div>
+          <div className="settings-row" style={{paddingTop:4}}>
+            <div className="settings-row-left">
+              <div className="settings-row-label">Cancel trip</div>
+              <div className="settings-row-desc">Returns all deposits. Cannot be undone.</div>
+            </div>
+            <button className="btn btn-sm" style={{background:"var(--rust-dim)",color:"var(--rust)",border:"1.5px solid var(--rust-border)"}}>Cancel</button>
+          </div>
+          <div className="settings-row">
+            <div className="settings-row-left">
+              <div className="settings-row-label">Transfer organizer</div>
+              <div className="settings-row-desc">Hand off admin controls to another member.</div>
+            </div>
+            <button className="btn btn-secondary btn-sm">Transfer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* REMOVE MODAL */}
+  {removeModal && (
+    <div className="modal-overlay" onClick={()=>setRemoveModal(null)}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-icon" style={{background:"var(--rust-dim)",border:"1.5px solid var(--rust-border)"}}>👋</div>
+        <h2>Remove {removeModal.name}?</h2>
+        <p>
+          They'll be removed from the trip and notified.
+          {removeModal.deposit ? " Their committed deposit will be returned automatically." : ""}
+        </p>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={()=>setRemoveModal(null)}>Cancel</button>
+          <button className="btn btn-primary" onClick={confirmRemove}>Remove</button>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+```
+
+);
+}
+
+// ─── NEW TRIP FLOW PAGE ───────────────────────────────────────────────────────
+function NewTripPage() {
+const [step, setStep] = useState(0);
+const [selectedLoc, setSelectedLoc] = useState(null);
+const [tripName, setTripName] = useState(””);
+const [dates, setDates] = useState(””);
+const [depositAmt, setDepositAmt] = useState(30);
+const [inviteEmail, setInviteEmail] = useState(””);
+const [invites, setInvites] = useState([“jordan@email.com”,“maya@email.com”]);
+const [launched, setLaunched] = useState(false);
+
+const steps = [“Destination”,“Details”,“Members”,“Review”];
+
+const addInvite = () => {
+if (inviteEmail.trim() && !invites.includes(inviteEmail.trim())) {
+setInvites(i => […i, inviteEmail.trim()]);
+setInviteEmail(””);
+}
+};
+
+if (launched) {
+return (
+<div className=“page” style={{display:“flex”,flexDirection:“column”,alignItems:“center”,justifyContent:“center”,minHeight:“60vh”,textAlign:“center”}}>
+<div style={{fontSize:64,marginBottom:20}}>🚀</div>
+<h2 style={{fontFamily:”‘Syne’,sans-serif”,fontWeight:800,fontSize:32,letterSpacing:-1,marginBottom:12}}>Trip launched!</h2>
+<p style={{color:“var(–muted)”,maxWidth:360,lineHeight:1.6,marginBottom:28}}>
+Your trip to <strong>{LOCATIONS.find(l=>l.id===selectedLoc)?.name || “your destination”}</strong> is live. Your group will get an invite to vote on the destination.
+</p>
+<button className=“btn btn-primary” onClick={()=>{ setLaunched(false); setStep(0); setSelectedLoc(null); }}>
+Create another trip
+</button>
+</div>
+);
+}
+
+return (
+<div className="page" style={{maxWidth:580}}>
+<div className="page-header animate-in">
+<div className="page-eyebrow">New Trip</div>
+<h1 className="page-title">Let’s get<br/><em>planning.</em></h1>
+</div>
+
+```
+  {/* STEP INDICATOR */}
+  <div className="flow-steps animate-in" style={{marginBottom:32}}>
+    {steps.map((s,i) => (
+      <div key={i} className={`flow-step ${i<step?"done":i===step?"active":""}`}>
+        <div className="flow-step-dot">{i<step?"✓":i+1}</div>
+        <div className="flow-step-label">{s}</div>
+      </div>
+    ))}
+  </div>
+
+  {/* STEP 0: DESTINATION */}
+  {step === 0 && (
+    <div className="card animate-in">
+      <div className="card-body">
+        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:17,marginBottom:6}}>Vote on a destination</div>
+        <div style={{fontSize:13,color:"var(--muted)",marginBottom:4,lineHeight:1.6}}>Add locations your group can vote on. The winner becomes your trip destination.</div>
+        <div className="location-grid">
+          {LOCATIONS.map(loc => (
+            <div key={loc.id} className={`location-option ${selectedLoc===loc.id?"selected":""}`} onClick={()=>setSelectedLoc(loc.id)}>
+              <span className="location-emoji">{loc.emoji}</span>
+              <div className="location-name">{loc.name}</div>
+              <div className="location-sub">{loc.sub}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{marginTop:12}}>
+          <input className="invite-input" placeholder="+ Add another destination..." style={{width:"100%"}}/>
+        </div>
+      </div>
+      <div className="card-footer">
+        <div style={{fontSize:13,color:"var(--muted)"}}>{selectedLoc ? "1 location selected" : "Pick at least 1"}</div>
+        <button className="btn btn-primary" disabled={!selectedLoc} onClick={()=>setStep(1)}>Continue →</button>
+      </div>
+    </div>
+  )}
+
+  {/* STEP 1: DETAILS */}
+  {step === 1 && (
+    <div className="card animate-in">
+      <div className="card-body">
+        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:17,marginBottom:16}}>Trip details</div>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <div style={{fontSize:12,fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Trip name</div>
+            <input className="invite-input" style={{width:"100%",borderRadius:12}} value={tripName} onChange={e=>setTripName(e.target.value)} placeholder="e.g. Summer beach trip 🌊"/>
+          </div>
+          <div>
+            <div style={{fontSize:12,fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",color:"var(--muted)",marginBottom:6}}>Dates</div>
+            <input className="invite-input" style={{width:"100%",borderRadius:12}} value={dates} onChange={e=>setDates(e.target.value)} placeholder="e.g. Aug 10–17, 2025"/>
+          </div>
+          <div>
+            <div style={{fontSize:12,fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",color:"var(--muted)",marginBottom:8}}>Commitment deposit</div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--sand)",borderRadius:12,padding:"14px 18px"}}>
+              <div>
+                <div style={{fontWeight:500,fontSize:14}}>Required deposit per person</div>
+                <div style={{fontSize:12,color:"var(--muted)",marginTop:2}}>Set higher for bigger commitment</div>
+              </div>
+              <div className="stepper">
+                <button className="stepper-btn" onClick={()=>setDepositAmt(d=>Math.max(5,d-5))}>−</button>
+                <div className="stepper-val">${depositAmt}</div>
+                <button className="stepper-btn" onClick={()=>setDepositAmt(d=>Math.min(500,d+5))}>+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="card-footer">
+        <button className="btn btn-secondary" onClick={()=>setStep(0)}>← Back</button>
+        <button className="btn btn-primary" onClick={()=>setStep(2)}>Continue →</button>
+      </div>
+    </div>
+  )}
+
+  {/* STEP 2: MEMBERS */}
+  {step === 2 && (
+    <div className="card animate-in">
+      <div className="card-body">
+        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:17,marginBottom:6}}>Invite your crew</div>
+        <div style={{fontSize:13,color:"var(--muted)",marginBottom:16,lineHeight:1.6}}>They'll receive a link to vote on the destination and commit with a deposit once you lock in.</div>
+        <div className="invite-input-row">
+          <input className="invite-input" placeholder="Email or phone..." value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addInvite()}/>
+          <button className="btn btn-primary" onClick={addInvite}>Add</button>
+        </div>
+        {invites.length > 0 && (
+          <div className="invited-list">
+            {invites.map((inv,i) => (
+              <div key={i} className="invited-chip">
+                {inv}
+                <button onClick={()=>setInvites(arr=>arr.filter((_,j)=>j!==i))}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="card-footer">
+        <button className="btn btn-secondary" onClick={()=>setStep(1)}>← Back</button>
+        <button className="btn btn-primary" onClick={()=>setStep(3)}>Continue →</button>
+      </div>
+    </div>
+  )}
+
+  {/* STEP 3: REVIEW */}
+  {step === 3 && (
+    <div className="card animate-in">
+      <div className="card-body">
+        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:17,marginBottom:16}}>Review & launch</div>
+        {[
+          { label:"Destination options",  value: LOCATIONS.find(l=>l.id===selectedLoc)?.name + " + 3 others" },
+          { label:"Trip name",            value: tripName || "(untitled)" },
+          { label:"Dates",                value: dates || "TBD" },
+          { label:"Deposit per person",   value: `$${depositAmt}` },
+          { label:"Invites sent",         value: `${invites.length} people` },
+          { label:"Bail rule",            value: "Majority vote" },
+        ].map((r,i) => (
+          <div key={i} className="settings-row" style={{paddingTop: i===0?4:undefined}}>
+            <div style={{fontSize:12,color:"var(--muted)",fontWeight:500}}>{r.label}</div>
+            <div style={{fontWeight:600,fontSize:14}}>{r.value}</div>
+          </div>
+        ))}
+        <div style={{background:"var(--sage-dim)",border:"1.5px solid #3d5c3530",borderRadius:12,padding:"14px 16px",marginTop:16,fontSize:13,color:"var(--sage)",lineHeight:1.6}}>
+          ✓ Deposits are held in escrow and only released after the trip concludes or a bail vote passes.
+        </div>
+      </div>
+      <div className="card-footer">
+        <button className="btn btn-secondary" onClick={()=>setStep(2)}>← Back</button>
+        <button className="btn btn-sage" onClick={()=>setLaunched(true)}>🚀 Launch Trip</button>
+      </div>
+    </div>
+  )}
+</div>
+```
+
+);
+}
+
+// ─── TRIPS PAGE (condensed from previous) ────────────────────────────────────
+function TripsPage({ onSettings }) {
+return (
+<div className="page">
+<div className="page-header animate-in">
+<div className="page-eyebrow">Your Group Trips</div>
+<h1 className="page-title">No more<br/><em>flaking</em> allowed.</h1>
+<p className="page-sub">Vote, commit, and hold each other accountable. Trips that actually happen.</p>
+</div>
+<div style={{display:“flex”,gap:8,marginBottom:24,flexWrap:“wrap”}}>
+{[{label:“All trips”,count:3},{label:“Voting”,count:1},{label:“Commit phase”,count:1},{label:“Locked”,count:1}].map((f,i)=>(
+<button key={i} className={`btn ${i===0?"btn-primary":"btn-secondary"} btn-sm`}>{f.label} <span style={{opacity:0.6,marginLeft:2}}>·{f.count}</span></button>
+))}
+<button className=“btn btn-sage btn-sm” style={{marginLeft:“auto”}}>+ New Trip</button>
+</div>
+{[
+{ name:“Tulum, Mexico 🌴”,      phase:“vote”,   badge:“badge-gold”,  label:“Voting Open”,    deposit:40, dates:“Jul 18–25”, committed:5, total:9 },
+{ name:“Zion National Park 🏜️”, phase:“commit”, badge:“badge-rust”,  label:“Commit Phase”,   deposit:25, dates:“Aug 2–6”,   committed:4, total:7 },
+{ name:“New Orleans, LA 🎷”,     phase:“locked”, badge:“badge-sage”,  label:“Trip Locked 🔒”, deposit:50, dates:“Sep 12–15”, committed:5, total:5 },
+].map((trip,i) => (
+<div key={i} className="card animate-in" style={{marginBottom:14}}>
+<div className="card-body">
+<div style={{display:“flex”,justifyContent:“space-between”,alignItems:“flex-start”,marginBottom:12}}>
+<div>
+<div className={`badge ${trip.badge}`} style={{marginBottom:8}}>{trip.label}</div>
+<div style={{fontFamily:”‘Syne’,sans-serif”,fontWeight:700,fontSize:20,letterSpacing:-0.5}}>{trip.name}</div>
+<div style={{fontSize:13,color:“var(–muted)”,marginTop:4}}>📅 {trip.dates} · {trip.committed}/{trip.total} committed</div>
+</div>
+<div style={{background:“var(–ink)”,color:“var(–paper)”,borderRadius:12,padding:“10px 16px”,textAlign:“center”,minWidth:80}}>
+<div style={{fontFamily:”‘Syne’,sans-serif”,fontWeight:800,fontSize:21}}>${trip.deposit}</div>
+<div style={{fontSize:10,letterSpacing:1,textTransform:“uppercase”,color:”#ffffff70”,marginTop:2}}>Deposit</div>
+</div>
+</div>
+<div style={{height:5,background:“var(–sand)”,borderRadius:100,overflow:“hidden”}}>
+<div style={{height:“100%”,borderRadius:100,background:`var(--${trip.phase==="locked"?"sage":trip.phase==="commit"?"rust":"gold"})`,width:`${(trip.committed/trip.total)*100}%`,transition:“width 0.5s”}}/>
+</div>
+</div>
+<div className="card-footer">
+<div style={{display:“flex”,gap:-6}}>
+{[”#3d5c35”,”#c9440f”,”#c49a14”,”#2563a8”,”#8a5a7a”].slice(0,trip.committed).map((c,j)=>(
+<div key={j} style={{width:28,height:28,borderRadius:“50%”,background:c,border:“2px solid var(–card)”,marginLeft:j>0?-8:0,display:“flex”,alignItems:“center”,justifyContent:“center”,fontSize:11,color:“white”,fontWeight:700}}>
+{[“M”,“J”,“S”,“P”,“C”][j]}
+</div>
+))}
+</div>
+<div style={{display:“flex”,gap:8}}>
+<button className="btn btn-secondary btn-sm" onClick={onSettings}>⚙ Settings</button>
+{trip.phase===“commit” && <button className="btn btn-primary btn-sm">Commit →</button>}
+{trip.phase===“locked” && <button className="btn btn-sage btn-sm">View Trip →</button>}
+</div>
+</div>
+</div>
+))}
+</div>
+);
+}
+
+// ─── ROOT APP ─────────────────────────────────────────────────────────────────
+export default function App() {
+const [tab, setTab] = useState(“trips”);
+
+return (
+<>
+<style>{css}</style>
+<div className="app">
+<nav className="nav">
+<div className=“nav-logo” onClick={()=>setTab(“trips”)}>pac<span>k</span>t</div>
+<div className="nav-tabs">
+{[
+{id:“trips”,   label:“Trips”},
+{id:“new”,     label:“New Trip”},
+{id:“wallet”,  label:“Wallet”},
+{id:“settings”,label:“Settings”},
+].map(t => (
+<button key={t.id} className={`nav-tab ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}>
+{t.label}
+</button>
+))}
+</div>
+<div className=“nav-avatar” style={{position:“relative”}}>
+Y
+<div className="notif-dot"/>
+</div>
+</nav>
+
+```
+    {tab === "trips"    && <TripsPage onSettings={()=>setTab("settings")}/>}
+    {tab === "new"      && <NewTripPage/>}
+    {tab === "wallet"   && <WalletPage/>}
+    {tab === "settings" && <SettingsPage/>}
+  </div>
+</>
+```
+
+);
+}
