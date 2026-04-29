@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pactra — Group Trips</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  window.SUPABASE_URL = 'https://jpwyazqstabasbgmrzpj.supabase.co';
+  window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impwd3lhenFzdGFiYXNiZ21yenBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMzE4ODAsImV4cCI6MjA5MjkwNzg4MH0.wn4gFY7W8SLrpJiO9JrdzCl7QVS_t6RJczVR09Wb95s';
+
+  // Safe init — if Supabase CDN is blocked (e.g. iframe preview), db becomes a no-op stub
+  // so guest mode and the rest of the UI still work fine
+  let db;
+  try {
+    db = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  } catch(e) {
+    const noopPromise = () => Promise.resolve({ data: null, error: { message: 'Supabase unavailable' } });
+    const noopFrom   = () => ({ select: noopPromise, insert: noopPromise, update: noopPromise, eq: function(){ return this; }, order: function(){ return this; }, single: noopPromise });
+    db = {
+      auth: {
+        getSession:        () => Promise.resolve({ data: { session: null } }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: ()=>{} } } }),
+        signUp:            noopPromise,
+        signInWithPassword:noopPromise,
+        signOut:           noopPromise,
+        resend:            noopPromise,
+      },
+      from: noopFrom,
+    };
+  }
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  /* ── Pactra dark theme ── */
+  --bg:          #080f1a;   /* main background — deep navy */
+  --bg2:         #0d1829;   /* slightly lifted surface */
+  --bg3:         #111f34;   /* cards, panels */
+  --bg4:         #172540;   /* hover states, subtle elevation */
+  --border:      #1e3050;   /* default border */
+  --border2:     #243a5e;   /* stronger border */
+
+  /* Text */
+  --ink:         #e8f0fc;   /* primary text — soft white-blue */
+  --muted:       #7090b8;   /* secondary text */
+  --muted2:      #4a6a90;   /* tertiary / placeholder */
+
+  /* Electric blue — primary, financial, commit actions */
+  --blue:        #2979ff;
+  --blue-mid:    #1a5fe0;
+  --blue-dim:    #2979ff18;
+  --blue-border: #2979ff35;
+
+  /* Orange — secondary CTAs, highlights, energy moments */
+  --orange:      #ff7320;
+  --orange-mid:  #e55c0a;
+  --orange-dim:  #ff732018;
+  --orange-border: #ff732035;
+
+  /* Semantic aliases */
+  --paper:       var(--bg);
+  --surface:     var(--bg2);
+  --surface2:    var(--bg3);
+  --card:        var(--bg3);
+  --navy:        #080f1a;
+  --navy-mid:    #0d1829;
+  --navy-light:  #172540;
+  --navy-dim:    #080f1a80;
+  --rust:        var(--orange);
+  --rust-dim:    var(--orange-dim);
+  --rust-border: var(--orange-border);
+  --sage:        var(--blue-mid);
+  --sage-dim:    var(--blue-dim);
+  --gold:        #f0a030;
+  --gold-dim:    #f0a03018;
+  --red:         #ff4455;
+  --red-dim:     #ff445518;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   18px;
+}
+body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* ── AUTH ── */
+.auth-screen { position: fixed; inset: 0; background: var(--bg); background-image: radial-gradient(ellipse at 65% 10%, #2979ff18 0%, transparent 55%), radial-gradient(ellipse at 15% 90%, #ff732010 0%, transparent 50%); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; }
+.hidden { display: none !important; }
+.auth-screen.hidden { display: none; }
+.auth-box { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 400px; animation: slideup 0.25s ease; box-shadow: 0 8px 48px #00000060, 0 1px 0 #ffffff06 inset; }
+.auth-logo { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 28px; letter-spacing: -1px; margin-bottom: 6px; }
+.auth-logo span { color: var(--blue); }
+.auth-tagline { font-size: 14px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+.auth-tabs { display: flex; gap: 2px; background: var(--bg2); border-radius: 100px; padding: 3px; margin-bottom: 24px; border: 1px solid var(--border); }
+.auth-tab { flex: 1; padding: 8px; border-radius: 100px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: none; color: var(--muted); transition: all 0.18s; font-family: 'Plus Jakarta Sans', sans-serif; text-align: center; } .auth-tab:not(.active):hover { color: var(--ink); }
+.auth-tab.active { background: var(--blue); color: #ffffff; }
+.auth-field { margin-bottom: 14px; }
+.auth-field label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.auth-input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg2); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; color: var(--ink); outline: none; transition: border-color 0.15s; }
+.auth-input:focus { border-color: var(--blue); }
+.auth-input-group { position: relative; }
+.pw-toggle { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--muted); font-size: 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
+.pw-toggle:hover { color: var(--ink); }
+.auth-submit { width: 100%; margin-top: 6px; justify-content: center; border-radius: var(--radius-md); padding: 14px; font-size: 14px; }
+.auth-msg { font-size: 13px; border-radius: 10px; padding: 11px 14px; margin-bottom: 14px; display: none; line-height: 1.5; }
+.auth-msg.show { display: block; }
+.auth-msg.error   { color: var(--red);  background: var(--red-dim);  border: 1px solid #d6303025; }
+.auth-msg.success { color: var(--sage); background: var(--sage-dim); border: 1px solid #3d5c3530; }
+.auth-switch { text-align: center; font-size: 12px; color: var(--muted); margin-top: 16px; }
+.auth-switch a { color: var(--orange); text-decoration: none; font-weight: 600; }
+.pw-strength { display: flex; gap: 4px; margin-top: 6px; }
+.pw-bar { flex: 1; height: 3px; border-radius: 3px; background: var(--bg4); transition: background 0.2s; }
+.pw-bar.weak   { background: var(--red); }
+.pw-bar.ok     { background: var(--gold); }
+.pw-bar.strong { background: var(--blue); }
+.pw-label { font-size: 11px; color: var(--muted); margin-top: 4px; min-height: 16px; }
+.terms-row { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 12px 14px; background: var(--bg2); border-radius: var(--radius-md); border: 1px solid var(--border); }
+.terms-row input[type=checkbox] { margin-top: 2px; width: 15px; height: 15px; accent-color: var(--sage); flex-shrink: 0; cursor: pointer; }
+.terms-row label { font-size: 12px; color: var(--muted); line-height: 1.5; cursor: pointer; }
+.terms-row a { color: var(--rust); text-decoration: none; }
+.confirm-box { text-align: center; }
+.confirm-emoji { font-size: 44px; margin-bottom: 14px; }
+.confirm-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.3px; margin-bottom: 8px; }
+.confirm-body { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+.confirm-steps { text-align: left; display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.confirm-step { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 13px; }
+.confirm-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--navy-mid); color: white; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* ── ONBOARDING ── */
+.onboarding-screen { position: fixed; inset: 0; background: var(--bg); background-image: radial-gradient(ellipse at 65% 10%, #2979ff18 0%, transparent 55%); display: flex; align-items: center; justify-content: center; z-index: 998; padding: 20px; }
+.onboarding-screen.hidden { display: none; }
+.onboarding-box { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 480px; animation: slideup 0.3s ease; box-shadow: 0 8px 48px #00000060; }
+.ob-progress { display: flex; gap: 6px; margin-bottom: 32px; }
+.ob-dot { flex: 1; height: 3px; border-radius: 3px; background: var(--bg4); transition: background 0.3s; }
+.ob-dot.active { background: var(--blue); }
+.ob-dot.done   { background: var(--blue-mid); }
+.ob-step { display: none; }
+.ob-step.active { display: block; animation: fadeInUp 0.3s ease; }
+.ob-emoji { font-size: 48px; margin-bottom: 16px; display: block; }
+.ob-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 24px; letter-spacing: -0.5px; margin-bottom: 10px; line-height: 1.1; }
+.ob-title em { font-style: italic; color: var(--blue); }
+.ob-body { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 28px; }
+.ob-feature-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+.ob-feature { display: flex; align-items: flex-start; gap: 12px; padding: 13px 15px; background: var(--bg2); border-radius: var(--radius-md); border: 1px solid var(--border); }
+.ob-feature-icon { font-size: 20px; flex-shrink: 0; }
+.ob-feature-text { font-size: 13px; line-height: 1.5; }
+.ob-feature-text strong { display: block; font-weight: 600; margin-bottom: 2px; color: var(--ink); }
+.ob-actions { display: flex; gap: 10px; }
+.ob-name-input { width: 100%; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg2); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 700; color: var(--ink); outline: none; transition: border-color 0.15s; margin-bottom: 12px; letter-spacing: -0.3px; }
+.ob-name-input:focus { border-color: var(--blue); }
+.ob-name-input::placeholder { color: var(--muted2); }
+
+/* ── APP ── */
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.app.hidden { display: none; }
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px; border-bottom: 1px solid var(--border); background: rgba(8,15,26,0.92); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(20px); }
+.nav-logo { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.8px; cursor: pointer; }
+.nav-logo span { color: var(--blue); }
+.nav-tabs { display: flex; gap: 2px; background: var(--bg2); border-radius: 100px; padding: 3px; border: 1px solid var(--border); }
+.nav-tab { padding: 7px 18px; border-radius: 100px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: none; color: var(--muted); transition: all 0.18s; font-family: 'Plus Jakarta Sans', sans-serif; }
+.nav-tab.active { background: var(--blue); color: #ffffff; }
+.nav-tab:not(.active):hover { color: var(--ink); background: var(--bg4); border-radius: 100px; }
+.nav-right { display: flex; align-items: center; gap: 10px; }
+.nav-user { font-size: 12px; color: var(--muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signout-btn { font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 100px; padding: 5px 14px; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.15s; }
+.signout-btn:hover { color: var(--navy); border-color: var(--navy); }
+
+/* ── PAGES ── */
+.page { max-width: 860px; margin: 0 auto; padding: 36px 28px 80px; width: 100%; display: none; }
+.page.active { display: block; }
+#page-new { max-width: 600px; }
+.page-header { margin-bottom: 32px; }
+.page-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: 1.8px; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
+.page-eyebrow::before { content:''; width: 18px; height: 1.5px; background: var(--blue); display: inline-block; vertical-align: middle; }
+.page-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: clamp(26px, 4vw, 40px); letter-spacing: -1px; line-height: 1.05; }
+.page-title em { font-style: italic; color: var(--blue); }
+.page-sub { color: var(--muted); font-size: 15px; margin-top: 8px; line-height: 1.6; }
+
+/* ── CARDS ── */
+.card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; transition: box-shadow 0.2s, border-color 0.2s; margin-bottom: 14px; }
+.card:hover { box-shadow: 0 4px 24px #00000040; border-color: var(--blue-border); }
+.card-body { padding: 24px 26px; }
+.card-footer { padding: 14px 26px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--bg2); }
+
+/* ── BUTTONS ── */
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; border-radius: 100px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+.btn-primary { background: var(--blue); color: white; }
+.btn-primary:hover:not(:disabled) { background: var(--blue-mid); transform: translateY(-1px); }
+.btn-secondary { background: none; border: 1px solid var(--border2); color: var(--ink); }
+.btn-secondary:hover { border-color: var(--orange); color: var(--orange); }
+.btn-ghost { background: none; color: var(--muted); padding: 8px 14px; border: none; transition: all 0.15s; }
+.btn-ghost:hover { color: var(--ink); background: var(--bg4); border-radius: 8px; }
+.btn-sage { background: var(--orange); color: white; }
+.btn-sage:hover:not(:disabled) { background: var(--orange-mid); }
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+.btn-icon { padding: 8px; border-radius: 10px; width: 34px; height: 34px; justify-content: center; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+/* ── BADGES ── */
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; padding: 4px 10px; border-radius: 100px; }
+.badge-rust { background: var(--orange-dim); color: var(--orange); border: 1px solid var(--orange-border); }
+.badge-sage { background: var(--blue-dim); color: var(--blue-mid); border: 1px solid var(--blue-border); }
+.badge-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid #c49a1430; }
+.badge-red  { background: var(--red-dim);  color: var(--red);  border: 1px solid #d6303025; }
+.badge-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid #2563a825; }
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 60px 20px; }
+.empty-emoji { font-size: 52px; margin-bottom: 16px; display: block; }
+.empty-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.4px; margin-bottom: 8px; }
+.empty-body { font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 340px; margin: 0 auto 24px; }
+
+/* ── LOADING SPINNER ── */
+.spinner-wrap { display: flex; align-items: center; justify-content: center; padding: 48px; }
+.spinner { width: 28px; height: 28px; border: 2.5px solid var(--sand2); border-top-color: var(--rust); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TRIPS PAGE ── */
+.filter-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+.trip-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.trip-deposit-badge { background: var(--bg4); border: 1px solid var(--border2); color: var(--ink); border-radius: 12px; padding: 10px 16px; text-align: center; min-width: 80px; flex-shrink: 0; }
+.trip-deposit-amt { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 21px; }
+.trip-deposit-lbl { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #ffffff70; margin-top: 2px; }
+.trip-progress { height: 4px; background: var(--bg4); border-radius: 100px; overflow: hidden; margin-top: 12px; }
+.trip-progress-fill { height: 100%; border-radius: 100px; transition: width 0.5s; }
+.avatar-stack { display: flex; }
+.avatar-stack .av { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; font-family: 'Plus Jakarta Sans', sans-serif; }
+.avatar-stack .av:not(:first-child) { margin-left: -8px; }
+
+/* ── NEW TRIP FLOW ── */
+.flow-steps { display: flex; gap: 0; margin-bottom: 32px; }
+.flow-step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+.flow-step:not(:last-child)::after { content: ''; position: absolute; top: 15px; left: 50%; width: 100%; height: 1px; background: var(--border); z-index: 0; }
+.flow-step-dot { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border2); background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; z-index: 1; transition: all 0.2s; position: relative; }
+.flow-step.done .flow-step-dot   { background: var(--blue); border-color: var(--blue); color: white; }
+.flow-step.active .flow-step-dot { background: var(--navy-mid); border-color: var(--navy-mid); color: white; }
+.flow-step-label { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: center; font-weight: 500; }
+.flow-step.active .flow-step-label { color: var(--ink); font-weight: 600; }
+.flow-panel { display: none; }
+.flow-panel.active { display: block; animation: fadeInUp 0.25s ease; }
+
+/* destination builder */
+.dest-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.dest-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--bg2); border-radius: var(--radius-md); border: 1px solid var(--border); }
+.dest-emoji-pick { font-size: 22px; cursor: pointer; padding: 2px 6px; border-radius: 6px; border: none; background: none; }
+.dest-emoji-pick:hover { background: var(--sand2); }
+.dest-name-input { flex: 1; border: none; background: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 500; color: var(--ink); outline: none; }
+.dest-name-input::placeholder { color: var(--muted2); }
+.dest-remove { background: none; border: none; cursor: pointer; color: var(--muted2); font-size: 16px; padding: 2px 4px; border-radius: 4px; transition: color 0.15s; }
+.dest-remove:hover { color: var(--red); }
+.add-dest-btn { display: flex; align-items: center; gap: 8px; padding: 11px 16px; border: 1px dashed var(--border2); border-radius: var(--radius-md); background: none; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; color: var(--muted); cursor: pointer; width: 100%; transition: all 0.15s; }
+.add-dest-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+
+/* invite chips */
+.invite-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.invite-input { flex: 1; padding: 11px 16px; border: 1px solid var(--border); border-radius: 100px; background: var(--bg2); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s; color: var(--ink); }
+.invite-input:focus { border-color: var(--blue); }
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg4); border: 1px solid var(--border2); border-radius: 100px; font-size: 13px; font-weight: 500; }
+.chip button { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; line-height: 1; }
+.chip button:hover { color: var(--rust); }
+
+/* section label */
+.field-label { font-size: 11px; font-weight: 600; letter-spacing: 0.9px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: block; }
+
+/* text inputs in flow */
+.text-input { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg2); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; color: var(--ink); outline: none; transition: border-color 0.15s; }
+.text-input:focus { border-color: var(--blue); }
+
+/* stepper */
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border2); background: var(--bg4); color: var(--ink); font-size: 17px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; line-height: 1; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+.stepper-btn:hover { border-color: var(--blue); background: var(--bg4); }
+.stepper-val { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 18px; min-width: 52px; text-align: center; letter-spacing: -0.5px; }
+
+/* radio */
+.radio-group { display: flex; flex-direction: column; gap: 8px; }
+.radio-option { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; background: var(--bg2); }
+.radio-option:hover { border-color: var(--blue); }
+.radio-option.selected { border-color: var(--blue); background: var(--blue-dim); }
+.radio-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+.radio-option.selected .radio-dot { border-color: var(--blue); background: var(--blue); }
+.radio-option.selected .radio-dot::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: white; display: block; }
+.radio-label { font-weight: 500; font-size: 14px; }
+.radio-desc  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* review rows */
+.review-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 13px 0; border-bottom: 1px solid var(--border2); gap: 16px; }
+.review-row:last-child { border-bottom: none; }
+.review-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+.review-value { font-weight: 600; font-size: 14px; text-align: right; max-width: 60%; }
+
+/* settings */
+.settings-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.3px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.section-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; background: var(--bg4); }
+.settings-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--border); gap: 16px; }
+.settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+.settings-row-left { flex: 1; }
+.settings-row-label { font-weight: 500; font-size: 14px; margin-bottom: 3px; }
+.settings-row-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.toggle-wrap { position: relative; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
+.toggle-input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider { position: absolute; inset: 0; background: var(--bg4); border-radius: 100px; transition: 0.2s; border: 1px solid var(--border2); }
+.toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: white; top: 2px; left: 2px; transition: 0.2s; box-shadow: 0 1px 4px #0003; }
+.toggle-input:checked + .toggle-slider { background: var(--blue); border-color: var(--blue); }
+.toggle-input:checked + .toggle-slider::before { transform: translateX(20px); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+
+/* modal */
+.modal-overlay { position: fixed; inset: 0; background: #0f0e0d70; backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+.modal-overlay.open { display: flex; animation: fadein 0.18s ease; }
+.modal { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; max-width: 440px; width: 100%; animation: slideup 0.22s ease; box-shadow: 0 16px 64px #00000080; }
+.modal-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 18px; }
+.modal h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 21px; letter-spacing: -0.4px; margin-bottom: 8px; }
+.modal p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 22px; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; justify-content: center; border-radius: 12px; padding: 13px; }
+
+/* toast */
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--navy-mid); color: var(--paper); padding: 12px 22px; border-radius: 100px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* info banner */
+.info-banner { background: var(--blue-dim); border: 1px solid var(--blue-border); border-radius: var(--radius-md); padding: 12px 16px; font-size: 13px; color: var(--blue); line-height: 1.6; margin-bottom: 20px; }
+
+@keyframes fadein   { from { opacity:0; } to { opacity:1; } }
+@keyframes slideup  { from { transform: translateY(14px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+@keyframes fadeInUp { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+.animate-in { animation: fadeInUp 0.3s ease forwards; }
+@media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } .nav-tabs { display: none; } .nav-user { display: none; } }
+
+/* ── TRIP DETAIL MODAL ── */
+.trip-modal-overlay { position: fixed; inset: 0; background: #0f0e0d80; backdrop-filter: blur(6px); display: none; align-items: flex-start; justify-content: center; z-index: 300; padding: 24px 16px; overflow-y: auto; }
+.trip-modal-overlay.open { display: flex; animation: fadein 0.18s ease; }
+.trip-modal { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 560px; margin: auto; animation: slideup 0.22s ease; overflow: hidden; box-shadow: 0 16px 64px #00000080; }
+.trip-modal-header { padding: 24px 28px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; background: var(--bg2); }
+.trip-modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -0.5px; }
+.trip-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); padding: 2px 6px; border-radius: 6px; line-height: 1; transition: all 0.15s; }
+.trip-modal-close:hover { background: var(--bg4); color: var(--ink); }
+.trip-modal-body { padding: 24px 28px; display: flex; flex-direction: column; gap: 24px; }
+.trip-modal-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; letter-spacing: -0.2px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.vote-option { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 8px; transition: all 0.15s; cursor: pointer; background: var(--bg2); }
+.vote-option:hover { border-color: var(--blue); background: var(--blue-dim); }
+.vote-option.voted { border-color: var(--sage); background: var(--sage-dim); }
+.vote-option-emoji { font-size: 22px; flex-shrink: 0; }
+.vote-option-name { flex: 1; font-weight: 500; font-size: 14px; }
+.vote-bar-wrap { flex: 1; }
+.vote-bar-bg { height: 5px; background: var(--sand); border-radius: 100px; overflow: hidden; margin-top: 4px; }
+.vote-bar-fill { height: 100%; border-radius: 100px; background: var(--sage); transition: width 0.4s; }
+.vote-count { font-size: 11px; color: var(--muted); margin-left: 8px; white-space: nowrap; }
+.trip-meta-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 14px; gap: 12px; }
+.trip-meta-row:last-child { border-bottom: none; }
+.trip-meta-label { color: var(--muted); font-size: 12px; font-weight: 500; }
+.trip-meta-value { font-weight: 500; }
+.phase-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── EMOJI PICKER ── */
+.emoji-picker-overlay { position: fixed; inset: 0; z-index: 400; background: transparent; }
+.emoji-picker { position: absolute; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-md); padding: 10px; display: grid; grid-template-columns: repeat(6, 36px); gap: 2px; box-shadow: 0 8px 40px #00000080; z-index: 401; }
+.emoji-picker button { width: 36px; height: 36px; border: none; background: none; border-radius: 6px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
+.emoji-picker button:hover { background: var(--bg4); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ AUTH ══════════ -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">Pac<span>tra</span></div>
+    <p class="auth-tagline">Group trips, made accountable.<br/>Commit with a deposit. No more flaking.</p>
+    <div class="auth-tabs" id="auth-tabs">
+      <button class="auth-tab active" id="auth-tab-login"  onclick="switchAuthTab('login')">Log in</button>
+      <button class="auth-tab"        id="auth-tab-signup" onclick="switchAuthTab('signup')">Sign up</button>
+    </div>
+    <div id="auth-msg" class="auth-msg"></div>
+
+    <!-- login -->
+    <div id="form-login">
+      <div class="auth-field"><label>Email</label><input type="email" class="auth-input" id="login-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')handleLogin()"/></div>
+      <div class="auth-field"><label>Password</label>
+        <div class="auth-input-group">
+          <input type="password" class="auth-input" id="login-password" placeholder="••••••••" style="padding-right:60px" onkeydown="if(event.key==='Enter')handleLogin()"/>
+          <button class="pw-toggle" type="button" onclick="togglePw('login-password',this)">Show</button>
+        </div>
+      </div>
+      <button class="btn btn-primary auth-submit" id="btn-login" onclick="handleLogin()">Log in &rarr;</button>
+      <p class="auth-switch">No account? <a href="#" onclick="switchAuthTab('signup');return false">Sign up free</a></p>
+      <div style="display:flex;align-items:center;gap:12px;margin:16px 0 8px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;color:var(--muted2);font-weight:500">or</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+      <button onclick="enterGuestMode()" style="width:100%;padding:12px 16px;border-radius:var(--radius-md);border:1.5px dashed var(--border2);background:var(--sand);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.15s" onmouseover="this.style.borderColor='var(--ink)';this.style.color='var(--ink)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">
+        &#x1F9EA; Continue as guest &nbsp;<span style="font-size:11px;opacity:0.5">testing only</span>
+      </button>
+    </div>
+
+    <!-- signup -->
+    <div id="form-signup" style="display:none">
+      <div class="auth-field"><label>Full name</label><input type="text" class="auth-input" id="signup-name" placeholder="Your name"/></div>
+      <div class="auth-field"><label>Email</label><input type="email" class="auth-input" id="signup-email" placeholder="you@email.com"/></div>
+      <div class="auth-field"><label>Password</label>
+        <div class="auth-input-group">
+          <input type="password" class="auth-input" id="signup-password" placeholder="Min. 8 characters" style="padding-right:60px" oninput="pwStrength(this.value)"/>
+          <button class="pw-toggle" type="button" onclick="togglePw('signup-password',this)">Show</button>
+        </div>
+        <div class="pw-strength"><div class="pw-bar" id="sb1"></div><div class="pw-bar" id="sb2"></div><div class="pw-bar" id="sb3"></div><div class="pw-bar" id="sb4"></div></div>
+        <div class="pw-label" id="pw-label"></div>
+      </div>
+      <div class="terms-row"><input type="checkbox" id="terms"/><label for="terms">I agree to Pactra's <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>. I understand deposits are held in escrow per the group's bail rules.</label></div>
+      <button class="btn btn-primary auth-submit" id="btn-signup" onclick="handleSignup()" style="margin-top:14px">Create account →</button>
+      <p class="auth-switch">Already have an account? <a href="#" onclick="switchAuthTab('login');return false">Log in</a></p>
+    </div>
+
+    <!-- confirm email -->
+    <div id="form-confirm" style="display:none">
+      <div class="confirm-box">
+        <div class="confirm-emoji">📬</div>
+        <div class="confirm-title">Check your inbox</div>
+        <div class="confirm-body">We sent a confirmation link to<br/><strong id="confirm-email"></strong></div>
+        <div class="confirm-steps">
+          <div class="confirm-step"><div class="confirm-step-num">1</div>Open the email from Pactra</div>
+          <div class="confirm-step"><div class="confirm-step-num">2</div>Click <strong>Confirm your email</strong></div>
+          <div class="confirm-step"><div class="confirm-step-num">3</div>Come back here and log in</div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Didn't get it? <a href="#" onclick="resendEmail();return false" style="color:var(--rust);text-decoration:none;font-weight:600">Resend email</a>.</p>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;border-radius:var(--radius-md);padding:13px" onclick="switchAuthTab('login')">Go to log in →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ONBOARDING ══════════ -->
+<div class="onboarding-screen hidden" id="onboarding-screen">
+  <div class="onboarding-box">
+    <div class="ob-progress">
+      <div class="ob-dot active" id="ob-dot-0"></div>
+      <div class="ob-dot" id="ob-dot-1"></div>
+      <div class="ob-dot" id="ob-dot-2"></div>
+    </div>
+
+    <!-- Step 0: Welcome -->
+    <div class="ob-step active" id="ob-step-0">
+      <span class="ob-emoji">✈️</span>
+      <h2 class="ob-title">Welcome to<br/><em>Pactra.</em></h2>
+      <p class="ob-body">You're about to plan group trips that actually happen. No more "I'm in!" followed by silence. Pactra holds everyone accountable with a real deposit.</p>
+      <div class="ob-feature-list">
+        <div class="ob-feature"><div class="ob-feature-icon">💰</div><div class="ob-feature-text"><strong>Deposits make it real</strong>Everyone puts skin in the game. No commit, no trip.</div></div>
+        <div class="ob-feature"><div class="ob-feature-icon">🗳️</div><div class="ob-feature-text"><strong>Group votes on the destination</strong>Add options, let everyone vote, majority wins.</div></div>
+        <div class="ob-feature"><div class="ob-feature-icon">⚖️</div><div class="ob-feature-text"><strong>Bail rules protect the group</strong>If someone flakes after committing, the group decides what happens to their deposit.</div></div>
+      </div>
+      <div class="ob-actions">
+        <button class="btn btn-primary" style="flex:1;justify-content:center;border-radius:var(--radius-md);padding:14px;font-size:14px" onclick="obNext()">Let's go →</button>
+      </div>
+    </div>
+
+    <!-- Step 1: What's your name -->
+    <div class="ob-step" id="ob-step-1">
+      <span class="ob-emoji">👋</span>
+      <h2 class="ob-title">What should we<br/><em>call you?</em></h2>
+      <p class="ob-body">This is how your friends will see you in trips. You can always change it later.</p>
+      <input class="ob-name-input" id="ob-name" placeholder="Your name..." maxlength="40" onkeydown="if(event.key==='Enter')obNext()"/>
+      <div class="ob-actions">
+        <button class="btn btn-secondary" style="border-radius:var(--radius-md);padding:13px" onclick="obBack()">← Back</button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center;border-radius:var(--radius-md);padding:13px;font-size:14px" id="ob-next-1" onclick="obNext()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Ready -->
+    <div class="ob-step" id="ob-step-2">
+      <span class="ob-emoji">🚀</span>
+      <h2 class="ob-title">You're all set,<br/><em id="ob-name-display">friend.</em></h2>
+      <p class="ob-body">Your first step is to create a trip. Add your destination options, set a deposit amount, and invite your crew. They'll vote, commit, and you're off.</p>
+      <div class="ob-feature-list">
+        <div class="ob-feature"><div class="ob-feature-icon">📍</div><div class="ob-feature-text"><strong>Add destination options</strong>You control what the group votes on, and can let others add theirs too.</div></div>
+        <div class="ob-feature"><div class="ob-feature-icon">📧</div><div class="ob-feature-text"><strong>Invite by email</strong>Your crew gets a link to vote and commit. Non-users sign up first.</div></div>
+      </div>
+      <div class="ob-actions">
+        <button class="btn btn-secondary" style="border-radius:var(--radius-md);padding:13px" onclick="obBack()">← Back</button>
+        <button class="btn btn-sage" style="flex:1;justify-content:center;border-radius:var(--radius-md);padding:13px;font-size:14px" onclick="obFinish()">Create my first trip 🎉</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MAIN APP ══════════ -->
+<div class="app hidden" id="main-app">
+  <nav class="nav">
+    <div class="nav-logo" onclick="switchTab('trips')">Pac<span>tra</span></div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('trips')"   id="tab-trips">Trips</button>
+      <button class="nav-tab"        onclick="switchTab('new')"     id="tab-new">New Trip</button>
+      <button class="nav-tab"        onclick="switchTab('wallet')"  id="tab-wallet">Wallet</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-user"></span>
+      <button class="signout-btn" onclick="handleSignOut()">Sign out</button>
+    </div>
+  </nav>
+
+  <!-- ══ TRIPS ══ -->
+  <div class="page active" id="page-trips">
+    <div class="page-header">
+      <div class="page-eyebrow">Your Group Trips</div>
+      <h1 class="page-title">No more<br/><em>flaking</em> allowed.</h1>
+      <p class="page-sub">Vote, commit, hold each other accountable.</p>
+    </div>
+    <div class="filter-bar">
+      <button class="btn btn-primary btn-sm" onclick="filterTrips('all')"    id="filter-all">All trips</button>
+      <button class="btn btn-secondary btn-sm" onclick="filterTrips('voting')"  id="filter-voting">Voting</button>
+      <button class="btn btn-secondary btn-sm" onclick="filterTrips('commit')"  id="filter-commit">Commit phase</button>
+      <button class="btn btn-secondary btn-sm" onclick="filterTrips('locked')"  id="filter-locked">Locked</button>
+      <button class="btn btn-sage btn-sm" style="margin-left:auto" onclick="switchTab('new')">+ New Trip</button>
+    </div>
+    <div id="trips-list">
+      <div class="spinner-wrap"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- ══ NEW TRIP ══ -->
+  <div class="page" id="page-new">
+    <div class="page-header">
+      <div class="page-eyebrow">New Trip</div>
+      <h1 class="page-title">Let's get<br/><em>planning.</em></h1>
+    </div>
+
+    <div class="flow-steps" id="flow-steps">
+      <div class="flow-step active" id="fstep-0"><div class="flow-step-dot">1</div><div class="flow-step-label">Destinations</div></div>
+      <div class="flow-step"        id="fstep-1"><div class="flow-step-dot">2</div><div class="flow-step-label">Details</div></div>
+      <div class="flow-step"        id="fstep-2"><div class="flow-step-dot">3</div><div class="flow-step-label">Members</div></div>
+      <div class="flow-step"        id="fstep-3"><div class="flow-step-dot">4</div><div class="flow-step-label">Review</div></div>
+    </div>
+
+    <!-- Step 0: Destinations -->
+    <div class="flow-panel active" id="fpanel-0">
+      <div class="card">
+        <div class="card-body">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:17px;margin-bottom:6px">Add destination options</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">Add the places your group will vote on. You can add up to 6 options. You can also allow members to add their own suggestions.</div>
+          <div class="dest-list" id="dest-list"></div>
+          <button class="add-dest-btn" onclick="addDest()" id="add-dest-btn">＋ Add a destination option</button>
+          <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border2)">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:500">
+              <input type="checkbox" id="allow-members-add" style="width:15px;height:15px;accent-color:var(--sage);flex-shrink:0"/>
+              Allow members to add their own destination suggestions
+            </label>
+            <div style="font-size:12px;color:var(--muted);margin-top:5px;margin-left:25px">Members can propose options before voting closes. You can always remove them.</div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div style="font-size:13px;color:var(--muted)" id="dest-count-label">Add at least 1 destination</div>
+          <button class="btn btn-primary" id="step0-next" disabled onclick="goToStep(1)">Continue →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: Details -->
+    <div class="flow-panel" id="fpanel-1">
+      <div class="card">
+        <div class="card-body">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:17px;margin-bottom:20px">Trip details</div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <label class="field-label">Trip name</label>
+              <input type="text" class="text-input" id="trip-name" placeholder="e.g. Summer vibes 🌊"/>
+            </div>
+            <div>
+              <label class="field-label">Dates (optional)</label>
+              <input type="text" class="text-input" id="trip-dates" placeholder="e.g. Aug 10–17, 2025 · TBD is fine"/>
+            </div>
+            <div>
+              <label class="field-label">Commitment deposit per person</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 18px">
+                <div>
+                  <div style="font-weight:500;font-size:14px">Required to join the trip</div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:2px">Held in escrow until the trip happens</div>
+                </div>
+                <div class="stepper">
+                  <button class="stepper-btn" onclick="adjDeposit(-5)">−</button>
+                  <input type="number" id="deposit-val" value="30" min="5" max="500" step="5"
+                    style="width:72px;background:none;border:none;outline:none;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:18px;color:var(--ink);text-align:center;letter-spacing:-0.5px;-moz-appearance:textfield;appearance:none"
+                    oninput="depositAmt=Math.min(500,Math.max(5,parseInt(this.value)||5))"
+                    onblur="if(!this.value||this.value<5)this.value=depositAmt;else depositAmt=parseInt(this.value)"/>
+                  <button class="stepper-btn" onclick="adjDeposit(5)">+</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="field-label">Bail rule</label>
+              <div class="radio-group" id="bail-rule-group">
+                <div class="radio-option selected" onclick="selectBail(this,'majority')"><div class="radio-dot"></div><div><div class="radio-label">Majority vote</div><div class="radio-desc">Group votes to keep or return the deposit.</div></div></div>
+                <div class="radio-option" onclick="selectBail(this,'organizer')"><div class="radio-dot"></div><div><div class="radio-label">Organizer decides</div><div class="radio-desc">You make the final call.</div></div></div>
+                <div class="radio-option" onclick="selectBail(this,'auto-keep')"><div class="radio-dot"></div><div><div class="radio-label">Auto-keep</div><div class="radio-desc">Deposit is split among committed members.</div></div></div>
+                <div class="radio-option" onclick="selectBail(this,'auto-return')"><div class="radio-dot"></div><div><div class="radio-label">Always return</div><div class="radio-desc">Deposit is always returned, no questions asked.</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(0)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(2)">Continue →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Members -->
+    <div class="flow-panel" id="fpanel-2">
+      <div class="card">
+        <div class="card-body">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:17px;margin-bottom:6px">Invite your crew</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">Enter their email addresses. They'll get a link to vote on the destination and commit with a deposit.</div>
+          <div class="invite-row">
+            <input type="email" class="invite-input" id="invite-input" placeholder="friend@email.com" onkeydown="if(event.key==='Enter')addInvite()"/>
+            <button class="btn btn-primary" onclick="addInvite()">Add</button>
+          </div>
+          <div class="chip-list" id="invite-list"></div>
+          <div style="margin-top:16px;padding:14px 16px;background:var(--sand);border-radius:var(--radius-md);font-size:12px;color:var(--muted);line-height:1.6">
+            💡 Invites are sent when you launch the trip. Anyone without an account will be prompted to sign up first.
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(3)">Continue →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Review -->
+    <div class="flow-panel" id="fpanel-3">
+      <div class="card">
+        <div class="card-body">
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:17px;margin-bottom:4px">Review & launch</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Double-check everything before your trip goes live.</div>
+          <div id="review-content"></div>
+          <div style="background:var(--sage-dim);border:1.5px solid #3d5c3530;border-radius:12px;padding:14px 16px;margin-top:16px;font-size:13px;color:var(--sage);line-height:1.6">
+            ✓ Deposits are held in escrow and only released after the trip concludes or a bail vote passes.
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
+          <button class="btn btn-sage" id="launch-btn" onclick="launchTrip()">🚀 Launch Trip</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Launched -->
+    <div class="flow-panel" id="fpanel-done" style="text-align:center;padding:60px 0">
+      <div style="font-size:64px;margin-bottom:20px">🎉</div>
+      <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:32px;letter-spacing:-1px;margin-bottom:12px">Trip launched!</h2>
+      <p style="color:var(--muted);max-width:360px;line-height:1.6;margin:0 auto 28px;font-size:15px" id="launch-confirm-msg">Your trip is live. Invites are on their way.</p>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn btn-secondary" onclick="switchTab('trips')">View my trips</button>
+        <button class="btn btn-primary" onclick="resetNewTrip()">Create another</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ WALLET ══ -->
+  <div class="page" id="page-wallet">
+    <div class="page-header">
+      <div class="page-eyebrow">Your Wallet</div>
+      <h1 class="page-title">Money in,<br/><em>money back.</em></h1>
+      <p class="page-sub">All deposits held in secure escrow. Funds released when trips conclude or bail votes pass.</p>
+    </div>
+    <div class="empty-state">
+      <span class="empty-emoji">💳</span>
+      <div class="empty-title">No transactions yet</div>
+      <div class="empty-body">Once you commit to a trip and pay your deposit, your wallet activity will show up here.</div>
+      <button class="btn btn-primary" onclick="switchTab('new')">Create a trip</button>
+    </div>
+  </div>
+
+</div><!-- end app -->
+
+<!-- ══════════ TRIP DETAIL MODAL ══════════ -->
+<div class="trip-modal-overlay" id="trip-modal-overlay" onclick="closeTripModal(event)">
+  <div class="trip-modal" id="trip-modal">
+    <div class="trip-modal-header">
+      <div>
+        <div id="tm-badge" class="badge badge-gold" style="margin-bottom:6px"></div>
+        <div class="trip-modal-title" id="tm-title">Trip</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px" id="tm-meta"></div>
+      </div>
+      <button class="trip-modal-close" onclick="document.getElementById('trip-modal-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="trip-modal-body" id="tm-body"></div>
+  </div>
+</div>
+
+<!-- ══════════ EMOJI PICKER ══════════ -->
+<div class="emoji-picker-overlay hidden" id="emoji-overlay" onclick="closeEmojiPicker()">
+  <div class="emoji-picker" id="emoji-picker" onclick="event.stopPropagation()"></div>
+</div>
+
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let currentUser = null;
+let userProfile = null; // { full_name }
+let allTrips = [];
+let currentFilter = 'all';
+let obStep = 0;
+
+// new trip state
+let destinations = [];
+let depositAmt = 30;
+let selectedBailRule = 'majority';
+let invites = [];
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function toast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function friendlyError(msg) {
+  if (!msg) return 'Something went wrong. Please try again.';
+  if (msg.includes('already registered') || msg.includes('User already registered'))
+    return 'An account with this email already exists — try logging in instead.';
+  if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials'))
+    return 'Wrong email or password. Please try again.';
+  if (msg.includes('Email not confirmed'))
+    return 'Please confirm your email first — check your inbox.';
+  if (msg.includes('Password should be') || msg.includes('weak'))
+    return 'Password must be at least 8 characters.';
+  if (msg.includes('rate limit') || msg.includes('too many'))
+    return 'Too many attempts — wait a minute and try again.';
+  return msg;
+}
+
+function showAuthMsg(text, type = 'error') {
+  const el = document.getElementById('auth-msg');
+  el.textContent = text; el.className = 'auth-msg show ' + type;
+}
+function clearAuthMsg() { const el = document.getElementById('auth-msg'); el.className = 'auth-msg'; el.textContent = ''; }
+
+// ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+let lastSignupEmail = '';
+
+async function handleSignup() {
+  clearAuthMsg();
+  const name  = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const pw    = document.getElementById('signup-password').value;
+  const terms = document.getElementById('terms').checked;
+
+  if (!name)  { showAuthMsg('Please enter your full name.'); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showAuthMsg('Please enter a valid email address.'); return; }
+  if (pw.length < 8) { showAuthMsg('Password must be at least 8 characters.'); return; }
+  if (!terms) { showAuthMsg('Please agree to the Terms of Service to continue.'); return; }
+
+  const btn = document.getElementById('btn-signup');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  lastSignupEmail = email;
+
+  const { data, error } = await db.auth.signUp({
+    email, password: pw,
+    options: { data: { full_name: name } }
+  });
+
+  if (error) { showAuthMsg(friendlyError(error.message)); btn.disabled = false; btn.textContent = 'Create account →'; return; }
+
+  if (data.session) {
+    await onSignedIn(data.user, true); // true = new user, show onboarding
+  } else {
+    document.getElementById('form-signup').style.display = 'none';
+    document.getElementById('auth-tabs').style.display = 'none';
+    document.getElementById('form-confirm').style.display = 'block';
+    document.getElementById('confirm-email').textContent = email;
+  }
+}
+
+async function handleLogin() {
+  clearAuthMsg();
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-password').value;
+
+  if (!email) { showAuthMsg('Please enter your email address.'); return; }
+  if (!pw)    { showAuthMsg('Please enter your password.'); return; }
+
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true; btn.textContent = 'Logging in…';
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pw });
+
+  if (error) { showAuthMsg(friendlyError(error.message)); btn.disabled = false; btn.textContent = 'Log in →'; return; }
+  await onSignedIn(data.user, false);
+}
+
+async function handleSignOut() {
+  await db.auth.signOut();
+  currentUser = null; userProfile = null; allTrips = [];
+  document.getElementById('main-app').classList.add('hidden');
+  document.getElementById('auth-screen').classList.remove('hidden');
+  switchAuthTab('login');
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+async function resendEmail() {
+  if (!lastSignupEmail) return;
+  const { error } = await db.auth.resend({ type: 'signup', email: lastSignupEmail });
+  if (!error) showAuthMsg('Confirmation email resent!', 'success');
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('auth-tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('auth-tab-signup').classList.toggle('active', tab === 'signup');
+  document.getElementById('form-login').style.display    = tab === 'login'  ? 'block' : 'none';
+  document.getElementById('form-signup').style.display   = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('form-confirm').style.display  = 'none';
+  document.getElementById('auth-tabs').style.display     = 'flex';
+  const bl = document.getElementById('btn-login'), bs = document.getElementById('btn-signup');
+  if (bl) { bl.disabled = false; bl.textContent = 'Log in →'; }
+  if (bs) { bs.disabled = false; bs.textContent = 'Create account →'; }
+  clearAuthMsg();
+}
+
+function togglePw(id, btn) { const el = document.getElementById(id); el.type = el.type === 'password' ? 'text' : 'password'; btn.textContent = el.type === 'password' ? 'Show' : 'Hide'; }
+
+function pwStrength(val) {
+  let s = 0;
+  if (val.length >= 8) s++;
+  if (val.length >= 12) s++;
+  if (/[A-Z]/.test(val) && /[0-9]/.test(val)) s++;
+  if (/[^A-Za-z0-9]/.test(val)) s++;
+  const cls = ['','weak','weak','ok','strong'];
+  const lbl = ['','Weak','Weak — try adding numbers or symbols','Okay','Strong ✓'];
+  [1,2,3,4].forEach(i => { document.getElementById('sb'+i).className = 'pw-bar' + (i<=s ? ' '+cls[s] : ''); });
+  document.getElementById('pw-label').textContent = val.length ? lbl[s] : '';
+}
+
+// ══════════════════════════════════════════
+// ON SIGNED IN — decide onboarding or app
+// ══════════════════════════════════════════
+async function onSignedIn(user, isNew) {
+  currentUser = user;
+  document.getElementById('auth-screen').classList.add('hidden');
+
+  // get name from metadata
+  const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'there';
+  userProfile = { full_name: name };
+  document.getElementById('nav-user').textContent = user.email;
+
+  if (isNew) {
+    // Brand new user → onboarding
+    document.getElementById('ob-name').value = name;
+    showOnboarding();
+  } else {
+    // Returning user — check if they have trips
+    await loadAndShowApp();
+  }
+}
+
+// ══════════════════════════════════════════
+// ONBOARDING
+// ══════════════════════════════════════════
+function showOnboarding() {
+  document.getElementById('onboarding-screen').classList.remove('hidden');
+  obStep = 0;
+  renderObStep();
+}
+
+function renderObStep() {
+  document.querySelectorAll('.ob-step').forEach((s, i) => s.classList.toggle('active', i === obStep));
+  document.querySelectorAll('.ob-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === obStep);
+    d.classList.toggle('done', i < obStep);
+  });
+}
+
+function obNext() {
+  if (obStep === 1) {
+    const name = document.getElementById('ob-name').value.trim();
+    if (!name) { document.getElementById('ob-name').focus(); return; }
+    document.getElementById('ob-name-display').textContent = name + '!';
+    userProfile.full_name = name;
+  }
+  if (obStep < 2) { obStep++; renderObStep(); }
+}
+function obBack() { if (obStep > 0) { obStep--; renderObStep(); } }
+
+function obFinish() {
+  const name = document.getElementById('ob-name').value.trim() || 'Friend';
+  userProfile.full_name = name;
+  document.getElementById('onboarding-screen').classList.add('hidden');
+  document.getElementById('main-app').classList.remove('hidden');
+  // For guest show "Guest (testing)", for real user show email
+  document.getElementById('nav-user').textContent = currentUser.id === 'guest' ? 'Guest (testing)' : currentUser.email;
+  if (currentUser.id === 'guest') sessionStorage.setItem('pactra_guest_onboarded', '1');
+  switchTab('new');
+  resetNewTrip();
+  addDest();
+}
+
+// ══════════════════════════════════════════
+// LOAD APP (returning user)
+// ══════════════════════════════════════════
+async function loadAndShowApp() {
+  document.getElementById('main-app').classList.remove('hidden');
+  switchTab('trips');
+  await loadTrips();
+}
+
+// ══════════════════════════════════════════
+// TRIPS
+// ══════════════════════════════════════════
+async function loadTrips() {
+  document.getElementById('trips-list').innerHTML = '<div class="spinner-wrap"><div class="spinner"></div></div>';
+  // Guest mode — just render whatever is in memory
+  if (currentUser && currentUser.id === 'guest') { renderTrips(); return; }
+
+  // Trips I created
+  const { data: myTrips, error: e1 } = await db
+    .from('trips')
+    .select('*, trip_destinations(*), trip_members(*)')
+    .eq('created_by', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  // Trips I'm a member of
+  const { data: memberTrips, error: e2 } = await db
+    .from('trip_members')
+    .select('trip_id, trips(*, trip_destinations(*), trip_members(*))')
+    .eq('user_id', currentUser.id);
+
+  if (e1 || e2) { toast('Error loading trips'); return; }
+
+  const memberTripList = (memberTrips || []).map(m => m.trips).filter(Boolean);
+
+  // Merge & dedupe
+  const seen = new Set();
+  allTrips = [];
+  [...(myTrips || []), ...memberTripList].forEach(t => {
+    if (t && !seen.has(t.id)) { seen.add(t.id); allTrips.push(t); }
+  });
+
+  renderTrips();
+}
+
+function renderTrips() {
+  const list = document.getElementById('trips-list');
+
+  let filtered = allTrips;
+  if (currentFilter !== 'all') {
+    const map = { voting: 'voting', commit: 'commit', locked: 'locked' };
+    filtered = allTrips.filter(t => t.phase === map[currentFilter]);
+  }
+
+  if (filtered.length === 0) {
+    if (allTrips.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state animate-in">
+          <span class="empty-emoji">🗺️</span>
+          <div class="empty-title">No trips yet</div>
+          <div class="empty-body">Create your first trip and invite your crew. Once everyone commits with a deposit, it's real.</div>
+          <button class="btn btn-primary" onclick="switchTab('new');resetNewTrip();addDest()">Create your first trip →</button>
+        </div>`;
+    } else {
+      list.innerHTML = `<div class="empty-state animate-in"><span class="empty-emoji">🔍</span><div class="empty-title">No trips here</div><div class="empty-body">No trips match this filter.</div></div>`;
+    }
+    return;
+  }
+
+  const phaseConfig = {
+    voting: { label: 'Voting Open',    badge: 'badge-gold', color: 'var(--gold)' },
+    commit: { label: 'Commit Phase',   badge: 'badge-rust', color: 'var(--rust)' },
+    locked: { label: 'Trip Locked 🔒', badge: 'badge-sage', color: 'var(--sage)' },
+  };
+
+  list.innerHTML = filtered.map(trip => {
+    const cfg = phaseConfig[trip.phase] || phaseConfig.voting;
+    const dests = trip.trip_destinations || [];
+    const members = trip.trip_members || [];
+    const committed = members.filter(m => m.status === 'committed').length;
+    const total = members.length;
+    const pct = total > 0 ? Math.round((committed / total) * 100) : 0;
+    const isOrganizer = trip.created_by === currentUser.id;
+    const destNames = dests.map(d => d.name).join(', ') || 'Destinations TBD';
+
+    const avatarColors = ['#3d5c35','#c9440f','#c49a14','#2563a8','#8a5a7a','#7a3060','#2a7a5a'];
+    const avatars = members.slice(0,5).map((m, i) =>
+      `<div class="av" style="background:${avatarColors[i % avatarColors.length]}">${(m.user_id || '?')[0].toUpperCase()}</div>`
+    ).join('');
+
+    return `
+      <div class="card animate-in" data-trip-id="${trip.id}">
+        <div class="card-body">
+          <div class="trip-card-header">
+            <div>
+              <div class="badge ${cfg.badge}" style="margin-bottom:8px">${cfg.label}</div>
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.5px">${trip.name || 'Untitled Trip'}</div>
+              <div style="font-size:13px;color:var(--muted);margin-top:4px">
+                ${trip.dates ? '📅 ' + trip.dates + ' · ' : ''}${destNames}
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px">${committed}/${total} committed</div>
+            </div>
+            <div class="trip-deposit-badge">
+              <div class="trip-deposit-amt">$${trip.deposit_amount}</div>
+              <div class="trip-deposit-lbl">Deposit</div>
+            </div>
+          </div>
+          <div class="trip-progress">
+            <div class="trip-progress-fill" style="background:${cfg.color};width:${pct}%"></div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="avatar-stack">${avatars || '<span style="font-size:12px;color:var(--muted)">No members yet</span>'}</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="openTripModal('${trip.id}')">Open trip →</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function filterTrips(f) {
+  currentFilter = f;
+  ['all','voting','commit','locked'].forEach(k => {
+    const el = document.getElementById('filter-' + k);
+    if (el) { el.className = k === f ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'; }
+  });
+  renderTrips();
+}
+
+// ══════════════════════════════════════════
+// NEW TRIP FLOW
+// ══════════════════════════════════════════
+function resetNewTrip() {
+  destinations = []; depositAmt = 30; selectedBailRule = 'majority'; invites = [];
+  const dv = document.getElementById('deposit-val'); if(dv) dv.value = 30;
+  document.getElementById('trip-name').value = '';
+  document.getElementById('trip-dates').value = '';
+  document.getElementById('invite-list').innerHTML = '';
+  document.getElementById('invite-input').value = '';
+  document.getElementById('allow-members-add').checked = false;
+  document.getElementById('dest-list').innerHTML = '';
+  document.getElementById('dest-count-label').textContent = 'Add at least 1 destination';
+  document.getElementById('step0-next').disabled = true;
+  document.querySelectorAll('.radio-option').forEach((o, i) => o.classList.toggle('selected', i === 0));
+  document.getElementById('flow-steps').style.display = 'flex';
+  goToStep(0);
+}
+
+const DEST_EMOJIS = ['🌴','🏔️','🏙️','🌊','🗽','🏝️','🏕️','🌆','🎷','🏜️','⛷️','🌸'];
+let emojiIdx = 0;
+
+function addDest() {
+  if (destinations.length >= 6) return;
+  const id = 'dest-' + Date.now();
+  const emoji = DEST_EMOJIS[emojiIdx % DEST_EMOJIS.length]; emojiIdx++;
+  destinations.push({ id, name: '', emoji });
+  renderDestList();
+  // focus the new input after render
+  setTimeout(() => { const inp = document.getElementById('inp-' + id); if (inp) inp.focus(); }, 50);
+}
+
+function removeDest(id) {
+  destinations = destinations.filter(d => d.id !== id);
+  renderDestList();
+  updateDestCount();
+}
+
+function onDestInput(id, val) {
+  const d = destinations.find(x => x.id === id);
+  if (d) d.name = val;
+  updateDestCount();
+}
+
+function cycleEmoji(id) {
+  const d = destinations.find(x => x.id === id);
+  if (!d) return;
+  const cur = DEST_EMOJIS.indexOf(d.emoji);
+  d.emoji = DEST_EMOJIS[(cur + 1) % DEST_EMOJIS.length];
+  renderDestList();
+}
+
+function renderDestList() {
+  const list = document.getElementById('dest-list');
+  list.innerHTML = destinations.map(d => `
+    <div class="dest-item" id="destrow-${d.id}">
+      <button class="dest-emoji-pick" onclick="openEmojiPicker('${d.id}', this)" title="Pick emoji">${d.emoji}</button>
+      <input class="dest-name-input" id="inp-${d.id}" value="${d.name}" placeholder="City, country or vibe..." oninput="onDestInput('${d.id}', this.value)"/>
+      <button class="dest-remove" onclick="removeDest('${d.id}')" title="Remove">✕</button>
+    </div>`).join('');
+
+  const addBtn = document.getElementById('add-dest-btn');
+  if (addBtn) addBtn.style.display = destinations.length >= 6 ? 'none' : 'flex';
+  updateDestCount();
+}
+
+function updateDestCount() {
+  const filled = destinations.filter(d => d.name.trim()).length;
+  const lbl = document.getElementById('dest-count-label');
+  const btn = document.getElementById('step0-next');
+  if (filled === 0) { lbl.textContent = 'Add at least 1 destination'; btn.disabled = true; }
+  else { lbl.textContent = filled + ' destination' + (filled > 1 ? 's' : '') + ' added'; btn.disabled = false; }
+}
+
+function adjDeposit(d) {
+  depositAmt = Math.min(500, Math.max(5, depositAmt + d));
+  const el = document.getElementById('deposit-val');
+  if (el) el.value = depositAmt;
+}
+
+function selectBail(el, rule) {
+  document.querySelectorAll('#bail-rule-group .radio-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedBailRule = rule;
+}
+
+function addInvite() {
+  const inp = document.getElementById('invite-input');
+  const val = inp.value.trim();
+  if (!val || invites.includes(val)) { inp.value = ''; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { toast('Please enter a valid email address'); return; }
+  invites.push(val);
+  renderInvites();
+  inp.value = '';
+}
+
+function removeInvite(email) {
+  invites = invites.filter(e => e !== email);
+  renderInvites();
+}
+
+function renderInvites() {
+  document.getElementById('invite-list').innerHTML = invites.map(e =>
+    `<div class="chip">${e}<button onclick="removeInvite('${e}')">✕</button></div>`
+  ).join('');
+}
+
+function goToStep(n) {
+  document.querySelectorAll('.flow-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('fpanel-' + n).classList.add('active');
+  for (let i = 0; i < 4; i++) {
+    const s = document.getElementById('fstep-' + i);
+    s.classList.remove('done','active');
+    if (i < n) { s.classList.add('done'); s.querySelector('.flow-step-dot').textContent = '✓'; }
+    else if (i === n) { s.classList.add('active'); s.querySelector('.flow-step-dot').textContent = i+1; }
+    else { s.querySelector('.flow-step-dot').textContent = i+1; }
+  }
+  if (n === 3) buildReview();
+}
+
+function buildReview() {
+  const dests = destinations.filter(d => d.name.trim());
+  const tripName = document.getElementById('trip-name').value.trim() || '(untitled)';
+  const dates    = document.getElementById('trip-dates').value.trim()  || 'TBD';
+  const allowAdd = document.getElementById('allow-members-add').checked;
+
+  const bailLabels = { majority: 'Majority vote', organizer: 'Organizer decides', 'auto-keep': 'Auto-keep', 'auto-return': 'Always return' };
+
+  document.getElementById('review-content').innerHTML = `
+    <div class="review-row"><div class="review-label">Trip name</div><div class="review-value">${tripName}</div></div>
+    <div class="review-row"><div class="review-label">Dates</div><div class="review-value">${dates}</div></div>
+    <div class="review-row"><div class="review-label">Destination options</div><div class="review-value">${dests.map(d => d.emoji + ' ' + d.name).join('<br/>')}</div></div>
+    <div class="review-row"><div class="review-label">Members can add destinations</div><div class="review-value">${allowAdd ? 'Yes' : 'No'}</div></div>
+    <div class="review-row"><div class="review-label">Deposit per person</div><div class="review-value">$${depositAmt}</div></div>
+    <div class="review-row"><div class="review-label">Bail rule</div><div class="review-value">${bailLabels[selectedBailRule]}</div></div>
+    <div class="review-row"><div class="review-label">Invites</div><div class="review-value">${invites.length > 0 ? invites.join('<br/>') : 'None yet'}</div></div>
+  `;
+}
+
+async function launchTrip() {
+  const btn = document.getElementById('launch-btn');
+  btn.disabled = true; btn.textContent = 'Launching…';
+
+  const tripName = document.getElementById('trip-name').value.trim() || 'Untitled Trip';
+  const dates    = document.getElementById('trip-dates').value.trim();
+  const dests    = destinations.filter(d => d.name.trim());
+
+  // Guest mode — simulate without saving to DB
+  if (currentUser.id === 'guest') {
+    const fakeTrip = {
+      id: 'guest-' + Date.now(),
+      name: tripName,
+      dates: dates || null,
+      deposit_amount: depositAmt,
+      bail_rule: selectedBailRule,
+      phase: 'voting',
+      created_by: 'guest',
+      trip_destinations: dests.map(d => ({ id: d.id, name: d.emoji + ' ' + d.name, votes: 0 })),
+      trip_members: [{ user_id: 'guest', role: 'organizer', status: 'committed' }]
+    };
+    allTrips.unshift(fakeTrip);
+    document.getElementById('flow-steps').style.display = 'none';
+    document.getElementById('launch-confirm-msg').textContent =
+      '"' + tripName + '" created! (Guest mode — not saved to database)';
+    document.querySelectorAll('.flow-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('fpanel-done').classList.add('active');
+    return;
+  }
+
+  // 1. Insert trip
+  const { data: trip, error: tripErr } = await db.from('trips').insert({
+    name: tripName,
+    dates: dates || null,
+    deposit_amount: depositAmt,
+    bail_rule: selectedBailRule,
+    phase: 'voting',
+    created_by: currentUser.id
+  }).select().single();
+
+  if (tripErr) { toast('Error creating trip: ' + tripErr.message); btn.disabled = false; btn.textContent = '🚀 Launch Trip'; return; }
+
+  // 2. Insert destinations
+  if (dests.length > 0) {
+    await db.from('trip_destinations').insert(
+      dests.map(d => ({ trip_id: trip.id, name: d.emoji + ' ' + d.name, added_by: currentUser.id }))
+    );
+  }
+
+  // 3. Add creator as organizer member
+  await db.from('trip_members').insert({
+    trip_id: trip.id,
+    user_id: currentUser.id,
+    role: 'organizer',
+    status: 'committed',
+    can_add_destinations: true
+  });
+
+  // 4. Fire invites via Edge Function if any emails were added
+  let inviteMsg = ' Invite your crew to get started.';
+  if (invites.length > 0) {
+    try {
+      btn.textContent = 'Sending invites…';
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const fnRes = await fetch(
+        `${window.SUPABASE_URL}/functions/v1/send-invite`,
+        {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            trip_id: trip.id,
+            emails: invites,
+            invited_by: currentUser.id
+          })
+        }
+      );
+      clearTimeout(timeout);
+      const fnData = await fnRes.json();
+      const sent = (fnData.results || []).filter(r => r.status === 'sent').length;
+      const failed = (fnData.results || []).filter(r => r.status === 'failed' || r.error).length;
+      if (sent > 0 && failed === 0)
+        inviteMsg = ` Invites sent to ${sent} ${sent === 1 ? 'person' : 'people'}.`;
+      else if (sent > 0 && failed > 0)
+        inviteMsg = ` ${sent} invite${sent > 1 ? 's' : ''} sent, ${failed} failed.`;
+      else
+        inviteMsg = ' Could not send invites — you can retry from trip settings.';
+    } catch(e) {
+      inviteMsg = ' Invite emails could not be sent — check your connection.';
+    }
+  }
+
+  // 5. Show success
+  document.getElementById('flow-steps').style.display = 'none';
+  document.getElementById('launch-confirm-msg').textContent = `"${tripName}" is live!` + inviteMsg;
+
+  document.querySelectorAll('.flow-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('fpanel-done').classList.add('active');
+
+  // Refresh trips in background
+  loadTrips();
+}
+
+// ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// TRIP DETAIL MODAL
+// ══════════════════════════════════════════
+const PHASE_CFG = {
+  voting: { label: 'Voting Open',    badge: 'badge-gold' },
+  commit: { label: 'Commit Phase',   badge: 'badge-rust' },
+  locked: { label: 'Trip Locked 🔒', badge: 'badge-sage' },
+};
+
+const BAIL_LABELS = { majority: 'Majority vote', organizer: 'Organizer decides', 'auto-keep': 'Auto-keep', 'auto-return': 'Always return' };
+
+async function openTripModal(tripId) {
+  const trip = allTrips.find(t => t.id === tripId);
+  if (!trip) return;
+
+  // Load real vote counts for non-guest
+  if (currentUser.id !== 'guest' && trip.trip_destinations?.length > 0) {
+    const { data: votes } = await db
+      .from('trip_votes')
+      .select('destination_id')
+      .eq('trip_id', tripId);
+
+    if (votes) {
+      // Count votes per destination
+      const counts = {};
+      votes.forEach(v => { counts[v.destination_id] = (counts[v.destination_id] || 0) + 1; });
+      trip.trip_destinations.forEach(d => { d.votes = counts[d.id] || 0; });
+
+      // Mark user's current vote
+      const { data: myVote } = await db
+        .from('trip_votes')
+        .select('destination_id')
+        .eq('trip_id', tripId)
+        .eq('user_id', currentUser.id)
+        .single();
+      trip._myVote = myVote?.destination_id || null;
+    }
+  }
+
+  const cfg = PHASE_CFG[trip.phase] || PHASE_CFG.voting;
+  const dests = trip.trip_destinations || [];
+  const members = trip.trip_members || [];
+  const isOrganizer = trip.created_by === currentUser.id || currentUser.id === 'guest';
+
+  // Header
+  document.getElementById('tm-badge').className = 'badge ' + cfg.badge;
+  document.getElementById('tm-badge').textContent = cfg.label;
+  document.getElementById('tm-title').textContent = trip.name || 'Untitled Trip';
+  document.getElementById('tm-meta').textContent = [trip.dates, trip.deposit_amount ? '$' + trip.deposit_amount + ' deposit' : ''].filter(Boolean).join(' · ');
+
+  // Build body
+  let html = '';
+
+  // ── VOTE SECTION ──
+  if (dests.length > 0) {
+    // Ensure all destinations have an id
+    dests.forEach((d, i) => { if (!d.id) d.id = 'dest-' + i; });
+    const totalVotes = dests.reduce((sum, d) => sum + (d.votes || 0), 0) || 1;
+    html += `<div>
+      <div class="trip-modal-section-title">🗳️ Vote on destination</div>
+      ${dests.map(d => {
+        const pct = Math.round(((d.votes || 0) / totalVotes) * 100);
+        return `<div class="vote-option${trip._myVote === d.id ? ' voted' : ''}" onclick="castVote('${trip.id}','${d.id}',this)">
+          <div class="vote-option-emoji">${d.name.match(/^\p{Emoji}/u)?.[0] || '📍'}</div>
+          <div style="flex:1">
+            <div class="vote-option-name">${d.name.replace(/^\p{Emoji}+\s*/u, '')}</div>
+            <div class="vote-bar-wrap">
+              <div class="vote-bar-bg"><div class="vote-bar-fill" style="width:${pct}%"></div></div>
+            </div>
+          </div>
+          <div class="vote-count">${d.votes || 0} vote${(d.votes || 0) !== 1 ? 's' : ''}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // ── TRIP INFO ──
+  html += `<div>
+    <div class="trip-modal-section-title">📋 Trip info</div>
+    <div class="trip-meta-row"><div class="trip-meta-label">Name</div><div class="trip-meta-value">${trip.name || '—'}</div></div>
+    <div class="trip-meta-row"><div class="trip-meta-label">Dates</div><div class="trip-meta-value">${trip.dates || 'TBD'}</div></div>
+    <div class="trip-meta-row"><div class="trip-meta-label">Deposit</div><div class="trip-meta-value">$${trip.deposit_amount}</div></div>
+    <div class="trip-meta-row"><div class="trip-meta-label">Bail rule</div><div class="trip-meta-value">${BAIL_LABELS[trip.bail_rule] || 'Majority vote'}</div></div>
+    <div class="trip-meta-row"><div class="trip-meta-label">Members</div><div class="trip-meta-value">${members.length} · ${members.filter(m=>m.status==='committed').length} committed</div></div>
+  </div>`;
+
+  // ── ADD DESTINATION (organizer or permitted members) ──
+  const canAdd = isOrganizer || members.find(m => m.user_id === currentUser.id && m.can_add_destinations);
+  if (canAdd && trip.phase === 'voting') {
+    html += `<div>
+      <div class="trip-modal-section-title">➕ Add destination option</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="text" id="new-dest-input-${trip.id}" placeholder="e.g. 🌴 Tulum, Mexico"
+          style="flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg2);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;color:var(--ink);outline:none"
+          onkeydown="if(event.key==='Enter')addDestToTrip('${trip.id}')"/>
+        <button class="btn btn-primary btn-sm" onclick="addDestToTrip('${trip.id}')">Add</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">Members will be able to vote on any option you add here.</div>
+    </div>`;
+  }
+
+  // ── ORGANIZER CONTROLS ──
+  if (isOrganizer) {
+    html += `<div>
+      <div class="trip-modal-section-title">⚙️ Organizer controls</div>
+      <div class="phase-btn-row">
+        <button class="btn btn-sm ${trip.phase==='voting'?'btn-primary':'btn-secondary'}" onclick="setPhase('${trip.id}','voting')">Voting open</button>
+        <button class="btn btn-sm ${trip.phase==='commit'?'btn-primary':'btn-secondary'}" onclick="setPhase('${trip.id}','commit')">Commit phase</button>
+        <button class="btn btn-sm ${trip.phase==='locked'?'btn-sage':'btn-secondary'}" onclick="setPhase('${trip.id}','locked')">Lock trip</button>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn btn-sm" style="background:var(--red-dim);color:var(--red);border:1px solid #ff445530" onclick="cancelTrip('${trip.id}')">Cancel trip</button>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('tm-body').innerHTML = html;
+  document.getElementById('trip-modal-overlay').classList.add('open');
+}
+
+function closeTripModal(e) {
+  if (e.target === document.getElementById('trip-modal-overlay')) {
+    document.getElementById('trip-modal-overlay').classList.remove('open');
+  }
+}
+
+async function castVote(tripId, destId, el) {
+  // Guest mode — visual only
+  if (currentUser.id === 'guest') {
+    document.querySelectorAll('.vote-option').forEach(o => o.classList.remove('voted'));
+    el.classList.add('voted');
+    toast('Vote recorded! (guest mode — not saved)');
+    return;
+  }
+
+  // Real mode — upsert vote (one vote per user per trip, can change)
+  const { error } = await db.from('trip_votes').upsert(
+    { trip_id: tripId, destination_id: destId, user_id: currentUser.id },
+    { onConflict: 'trip_id,user_id' }
+  );
+
+  if (error) { toast('Could not save vote: ' + error.message); return; }
+
+  // Update local vote counts and re-render modal
+  const trip = allTrips.find(t => t.id === tripId);
+  if (trip && trip.trip_destinations) {
+    trip.trip_destinations.forEach(d => {
+      if (d.id === destId) d.votes = (d.votes || 0) + 1;
+    });
+  }
+
+  document.querySelectorAll('.vote-option').forEach(o => o.classList.remove('voted'));
+  el.classList.add('voted');
+  toast('Vote saved! ✓');
+}
+
+async function addDestToTrip(tripId) {
+  const input = document.getElementById('new-dest-input-' + tripId);
+  const name = input?.value.trim();
+  if (!name) return;
+
+  const trip = allTrips.find(t => t.id === tripId);
+  if (!trip) return;
+
+  if (currentUser.id === 'guest') {
+    // Guest mode — just add to local array
+    if (!trip.trip_destinations) trip.trip_destinations = [];
+    trip.trip_destinations.push({ id: 'dest-' + Date.now(), name, votes: 0 });
+    input.value = '';
+    openTripModal(tripId); // re-render
+    toast('Destination added!');
+    return;
+  }
+
+  const { data, error } = await db.from('trip_destinations').insert({
+    trip_id: tripId,
+    name,
+    added_by: currentUser.id
+  }).select().single();
+
+  if (error) { toast('Could not add destination: ' + error.message); return; }
+
+  // Update local trip
+  if (!trip.trip_destinations) trip.trip_destinations = [];
+  trip.trip_destinations.push({ ...data, votes: 0 });
+  input.value = '';
+  openTripModal(tripId); // re-render modal with new destination
+  toast('Destination added!');
+}
+
+async function setPhase(tripId, phase) {
+  if (currentUser.id === 'guest') {
+    const trip = allTrips.find(t => t.id === tripId);
+    if (trip) { trip.phase = phase; }
+    openTripModal(tripId); // re-render modal
+    renderTrips();
+    toast('Phase updated to: ' + phase);
+    return;
+  }
+  const { error } = await db.from('trips').update({ phase }).eq('id', tripId);
+  if (error) { toast('Error updating phase'); return; }
+  const trip = allTrips.find(t => t.id === tripId);
+  if (trip) trip.phase = phase;
+  openTripModal(tripId);
+  renderTrips();
+  toast('Phase updated!');
+}
+
+async function cancelTrip(tripId) {
+  if (!confirm('Cancel this trip? This cannot be undone.')) return;
+  if (currentUser.id !== 'guest') {
+    await db.from('trips').update({ phase: 'cancelled' }).eq('id', tripId);
+  }
+  allTrips = allTrips.filter(t => t.id !== tripId);
+  document.getElementById('trip-modal-overlay').classList.remove('open');
+  renderTrips();
+  toast('Trip cancelled.');
+}
+
+// ══════════════════════════════════════════
+// EMOJI PICKER
+// ══════════════════════════════════════════
+const ALL_EMOJIS = ['🌴','🏔️','🏙️','🌊','🗽','🏝️','🏕️','🌆','🎷','🏜️','⛷️','🌸','🗺️','🌍','🌎','🌏','🏖️','🏛️','🎡','🎢','🎠','🍜','🍕','🌮','🎭','🎪','🎨','🏄','🤿','🚂','✈️','🚢','🛻','🏔️','🌋','🏞️','🌅','🌄','🎑','🗻','🏟️','🏯','🗼','🗿','🗽','🕌','⛩️','🕍','⛪'];
+let emojiTargetId = null;
+
+function openEmojiPicker(destId, buttonEl) {
+  emojiTargetId = destId;
+  const picker = document.getElementById('emoji-picker');
+  picker.innerHTML = ALL_EMOJIS.map(e =>
+    `<button onclick="pickEmoji('${e}')">${e}</button>`
+  ).join('');
+
+  // Position near the button
+  const rect = buttonEl.getBoundingClientRect();
+  picker.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+  picker.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - 230) + 'px';
+
+  document.getElementById('emoji-overlay').classList.remove('hidden');
+}
+
+function closeEmojiPicker() {
+  document.getElementById('emoji-overlay').classList.add('hidden');
+  emojiTargetId = null;
+}
+
+function pickEmoji(emoji) {
+  if (!emojiTargetId) return;
+  const d = destinations.find(x => x.id === emojiTargetId);
+  if (d) { d.emoji = emoji; renderDestList(); }
+  closeEmojiPicker();
+}
+
+// ══════════════════════════════════════════
+// TAB SWITCHING
+// ══════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'trips') loadTrips();
+}
+
+// ══════════════════════════════════════════
+// GUEST MODE
+// ══════════════════════════════════════════
+function enterGuestMode() {
+  // Set up a fake user so the rest of the app thinks someone is logged in
+  currentUser = { id: 'guest', email: 'guest@test.com', user_metadata: { full_name: 'Guest' } };
+  userProfile  = { full_name: 'Guest' };
+
+  // Hide auth screen
+  document.getElementById('auth-screen').classList.add('hidden');
+
+  // If they've already done onboarding this session, skip straight to app
+  if (sessionStorage.getItem('pactra_guest_onboarded')) {
+    document.getElementById('main-app').classList.remove('hidden');
+    document.getElementById('nav-user').textContent = 'Guest (testing)';
+    switchTab('trips');
+    renderTrips();
+  } else {
+    // First time — show onboarding
+    document.getElementById('ob-name').value = '';
+    showOnboarding();
+  }
+}
+
+// ══════════════════════════════════════════
+// INVITE TOKEN HANDLING
+// ══════════════════════════════════════════
+let pendingInviteToken = null;
+
+async function checkInviteToken() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('invite');
+  if (!token) return;
+  pendingInviteToken = token;
+
+  // Look up the invite
+  const { data: invite, error } = await db
+    .from('trip_invites')
+    .select('trip_id, invited_email, status, trips(name, deposit_amount)')
+    .eq('token', token)
+    .single();
+
+  if (error || !invite) { toast('Invite link is invalid or expired.'); return; }
+  if (invite.status === 'accepted') { toast('This invite has already been used.'); return; }
+
+  // Store trip info for after login/signup
+  pendingInviteToken = token;
+  window._pendingInvite = invite;
+
+  // Show a banner on the auth screen
+  const tagline = document.querySelector('.auth-tagline');
+  if (tagline) {
+    tagline.innerHTML = `You've been invited to join <strong style="color:var(--blue)">${invite.trips.name}</strong>.<br/>Sign in or create an account to vote and commit.`;
+  }
+}
+
+async function acceptPendingInvite(userId) {
+  if (!pendingInviteToken || !window._pendingInvite) return;
+  const invite = window._pendingInvite;
+
+  // Add them as a trip member
+  await db.from('trip_members').upsert({
+    trip_id: invite.trip_id,
+    user_id: userId,
+    role: 'member',
+    status: 'invited',
+    can_add_destinations: false
+  }, { onConflict: 'trip_id,user_id' });
+
+  // Mark invite as accepted
+  await db.from('trip_invites')
+    .update({ status: 'accepted' })
+    .eq('token', pendingInviteToken);
+
+  pendingInviteToken = null;
+  window._pendingInvite = null;
+
+  // Clean up URL
+  window.history.replaceState({}, '', window.location.pathname);
+
+  toast("You've joined the trip! 🎉");
+}
+
+// ══════════════════════════════════════════
+// SESSION RESTORE
+// ══════════════════════════════════════════
+
+// Check for invite token on page load
+checkInviteToken().catch(() => {});
+
+try {
+  db.auth.getSession().then(async ({ data: { session } }) => {
+    if (session) {
+      await acceptPendingInvite(session.user.id);
+      onSignedIn(session.user, false);
+    }
+  }).catch(() => {});
+} catch(e) {}
+
+try {
+  db.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session && !currentUser) {
+      await acceptPendingInvite(session.user.id);
+      onSignedIn(session.user, false);
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      document.getElementById('main-app').classList.add('hidden');
+      document.getElementById('onboarding-screen').classList.add('hidden');
+      document.getElementById('auth-screen').classList.remove('hidden');
+    }
+  });
+} catch(e) {}
+</script>
+</body>
+</html>
