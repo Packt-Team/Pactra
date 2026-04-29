@@ -324,7 +324,7 @@ input[type=number] { -moz-appearance: textfield; }
 .modal-actions .btn { flex: 1; justify-content: center; border-radius: 12px; padding: 13px; }
 
 /* toast */
-.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--navy-mid); color: var(--paper); padding: 12px 22px; border-radius: 100px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 999; white-space: nowrap; }
+.toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); background: #e8f0fc; color: #080f1a; padding: 12px 22px; border-radius: 100px; font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 9999; white-space: nowrap; box-shadow: 0 4px 24px #00000060; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* info banner */
@@ -722,9 +722,12 @@ let invites = [];
 // ══════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════
-function toast(msg, duration = 3000) {
+function toast(msg, duration = 3000, type = 'default') {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
+  t.textContent = msg;
+  t.style.background = type === 'error' ? '#ff4455' : type === 'success' ? '#2979ff' : '#e8f0fc';
+  t.style.color = type === 'error' || type === 'success' ? '#ffffff' : '#080f1a';
+  t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
 }
 
@@ -940,7 +943,7 @@ async function loadTrips() {
     .select('trip_id, trips(*, trip_destinations(*), trip_members(*))')
     .eq('user_id', currentUser.id);
 
-  if (e1 || e2) { toast('Error loading trips'); return; }
+  if (e1 || e2) { toast('Error loading trips', 4000, 'error'); return; }
 
   const memberTripList = (memberTrips || []).map(m => m.trips).filter(Boolean);
 
@@ -1218,16 +1221,9 @@ async function launchTrip() {
     created_by: currentUser.id
   }).select().single();
 
-  if (tripErr) { toast('Error creating trip: ' + tripErr.message); btn.disabled = false; btn.textContent = '🚀 Launch Trip'; return; }
+  if (tripErr) { toast('Error: ' + tripErr.message, 4000, 'error'); console.error('Trip creation error:', tripErr); btn.disabled = false; btn.textContent = '🚀 Launch Trip'; return; }
 
-  // 2. Insert destinations
-  if (dests.length > 0) {
-    await db.from('trip_destinations').insert(
-      dests.map(d => ({ trip_id: trip.id, name: d.emoji + ' ' + d.name, added_by: currentUser.id }))
-    );
-  }
-
-  // 3. Add creator as organizer member
+  // 2. Add creator as organizer member FIRST (so RLS passes for destinations)
   await db.from('trip_members').insert({
     trip_id: trip.id,
     user_id: currentUser.id,
@@ -1235,6 +1231,14 @@ async function launchTrip() {
     status: 'committed',
     can_add_destinations: true
   });
+
+  // 3. Insert destinations (now RLS check will pass since we're a member)
+  if (dests.length > 0) {
+    const { error: destErr } = await db.from('trip_destinations').insert(
+      dests.map(d => ({ trip_id: trip.id, name: d.emoji + ' ' + d.name, added_by: currentUser.id }))
+    );
+    if (destErr) console.error('Destination insert error:', destErr);
+  }
 
   // 4. Fire invites via Edge Function if any emails were added
   let inviteMsg = ' Invite your crew to get started.';
@@ -1427,7 +1431,7 @@ async function castVote(tripId, destId, el) {
     { onConflict: 'trip_id,user_id' }
   );
 
-  if (error) { toast('Could not save vote: ' + error.message); return; }
+  if (error) { toast('Could not save vote: ' + error.message, 4000, 'error'); return; }
 
   // Update local vote counts and re-render modal
   const trip = allTrips.find(t => t.id === tripId);
@@ -1439,7 +1443,7 @@ async function castVote(tripId, destId, el) {
 
   document.querySelectorAll('.vote-option').forEach(o => o.classList.remove('voted'));
   el.classList.add('voted');
-  toast('Vote saved! ✓');
+  toast('Vote saved! ✓', 2000, 'success');
 }
 
 async function addDestToTrip(tripId) {
@@ -1456,7 +1460,7 @@ async function addDestToTrip(tripId) {
     trip.trip_destinations.push({ id: 'dest-' + Date.now(), name, votes: 0 });
     input.value = '';
     openTripModal(tripId); // re-render
-    toast('Destination added!');
+    toast('Destination added!', 2000, 'success');
     return;
   }
 
@@ -1466,14 +1470,14 @@ async function addDestToTrip(tripId) {
     added_by: currentUser.id
   }).select().single();
 
-  if (error) { toast('Could not add destination: ' + error.message); return; }
+  if (error) { toast('Could not add destination: ' + error.message, 4000, 'error'); return; }
 
   // Update local trip
   if (!trip.trip_destinations) trip.trip_destinations = [];
   trip.trip_destinations.push({ ...data, votes: 0 });
   input.value = '';
   openTripModal(tripId); // re-render modal with new destination
-  toast('Destination added!');
+  toast('Destination added!', 2000, 'success');
 }
 
 async function setPhase(tripId, phase) {
@@ -1486,12 +1490,12 @@ async function setPhase(tripId, phase) {
     return;
   }
   const { error } = await db.from('trips').update({ phase }).eq('id', tripId);
-  if (error) { toast('Error updating phase'); return; }
+  if (error) { toast('Error updating phase', 4000, 'error'); return; }
   const trip = allTrips.find(t => t.id === tripId);
   if (trip) trip.phase = phase;
   openTripModal(tripId);
   renderTrips();
-  toast('Phase updated!');
+  toast('Phase updated!', 2000, 'success');
 }
 
 async function cancelTrip(tripId) {
