@@ -930,29 +930,66 @@ async function loadTrips() {
   // Guest mode — just render whatever is in memory
   if (currentUser && currentUser.id === 'guest') { renderTrips(); return; }
 
-  // Trips I created
+  // Step 1: Trips I created
   const { data: myTrips, error: e1 } = await db
     .from('trips')
-    .select('*, trip_destinations(*), trip_members(*)')
+    .select('*')
     .eq('created_by', currentUser.id)
     .order('created_at', { ascending: false });
 
-  // Trips I'm a member of
-  const { data: memberTrips, error: e2 } = await db
+  if (e1) { toast('Error loading trips', 4000, 'error'); return; }
+
+  // Step 2: Trip IDs I'm a member of (simple query, no nesting)
+  const { data: myMemberships, error: e2 } = await db
     .from('trip_members')
-    .select('trip_id, trips(*, trip_destinations(*), trip_members(*))')
+    .select('trip_id')
     .eq('user_id', currentUser.id);
 
-  if (e1 || e2) { toast('Error loading trips', 4000, 'error'); return; }
+  if (e2) { toast('Error loading memberships', 4000, 'error'); return; }
 
-  const memberTripList = (memberTrips || []).map(m => m.trips).filter(Boolean);
+  // Step 3: Fetch those trips separately
+  const memberTripIds = (myMemberships || [])
+    .map(m => m.trip_id)
+    .filter(id => !(myTrips || []).find(t => t.id === id)); // exclude ones I already have
 
-  // Merge & dedupe
+  let memberTripData = [];
+  if (memberTripIds.length > 0) {
+    const { data } = await db
+      .from('trips')
+      .select('*')
+      .in('id', memberTripIds);
+    memberTripData = data || [];
+  }
+
+  // Step 4: Merge all trips then fetch destinations + members separately
   const seen = new Set();
-  allTrips = [];
-  [...(myTrips || []), ...memberTripList].forEach(t => {
-    if (t && !seen.has(t.id)) { seen.add(t.id); allTrips.push(t); }
+  const rawTrips = [];
+  [...(myTrips || []), ...memberTripData].forEach(t => {
+    if (t && !seen.has(t.id)) { seen.add(t.id); rawTrips.push(t); }
   });
+
+  if (rawTrips.length === 0) { allTrips = []; renderTrips(); return; }
+
+  const allTripIds = rawTrips.map(t => t.id);
+
+  // Step 5: Fetch destinations for all trips
+  const { data: allDests } = await db
+    .from('trip_destinations')
+    .select('*')
+    .in('trip_id', allTripIds);
+
+  // Step 6: Fetch members for all trips
+  const { data: allMembers } = await db
+    .from('trip_members')
+    .select('*')
+    .in('trip_id', allTripIds);
+
+  // Step 7: Attach destinations and members to each trip
+  allTrips = rawTrips.map(t => ({
+    ...t,
+    trip_destinations: (allDests || []).filter(d => d.trip_id === t.id),
+    trip_members: (allMembers || []).filter(m => m.trip_id === t.id)
+  }));
 
   renderTrips();
 }
