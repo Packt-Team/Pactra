@@ -1428,6 +1428,28 @@ async function openTripModal(tripId) {
     </div>`;
   }
 
+  // ── INVITE MEMBERS ──
+  if (isOrganizer) {
+    html += `<div>
+      <div class="trip-modal-section-title">👥 Invite members</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="email" id="new-invite-input-${trip.id}" placeholder="friend@email.com"
+          style="flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg2);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;color:var(--ink);outline:none"
+          onkeydown="if(event.key==='Enter')inviteMemberToTrip('${trip.id}')"/>
+        <button class="btn btn-primary btn-sm" onclick="inviteMemberToTrip('${trip.id}')">Invite</button>
+      </div>
+      ${(trip.trip_members||[]).length > 0 ? `
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+        ${(trip.trip_members||[]).map(m => `
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border-radius:var(--radius-sm);font-size:13px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0">${(m.user_id||'?')[0].toUpperCase()}</div>
+            <div style="flex:1;color:var(--muted)">${m.role === 'organizer' ? 'You (organizer)' : m.user_id}</div>
+            <span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:100px;background:${m.status==='committed'?'var(--blue-dim)':m.status==='invited'?'var(--bg4)':'var(--orange-dim)'};color:${m.status==='committed'?'var(--blue)':m.status==='invited'?'var(--muted)':'var(--orange)'}">${m.status}</span>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }
+
   // ── ORGANIZER CONTROLS ──
   if (isOrganizer) {
     html += `<div>
@@ -1515,6 +1537,57 @@ async function addDestToTrip(tripId) {
   input.value = '';
   openTripModal(tripId); // re-render modal with new destination
   toast('Destination added!', 2000, 'success');
+}
+
+async function inviteMemberToTrip(tripId) {
+  const input = document.getElementById('new-invite-input-' + tripId);
+  const email = input?.value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast('Please enter a valid email address', 3000, 'error');
+    return;
+  }
+
+  if (currentUser.id === 'guest') {
+    toast('Invites require a real account', 3000, 'error');
+    return;
+  }
+
+  input.value = '';
+  toast('Sending invite…');
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(
+      `${window.SUPABASE_URL}/functions/v1/send-invite`,
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          trip_id: tripId,
+          emails: [email],
+          invited_by: currentUser.id
+        })
+      }
+    );
+    clearTimeout(timeout);
+    const data = await res.json();
+    const sent = (data.results || []).filter(r => r.status === 'sent').length;
+    if (sent > 0) {
+      toast('Invite sent to ' + email, 3000, 'success');
+      // Reload trip modal to show updated member list
+      await loadTrips();
+      openTripModal(tripId);
+    } else {
+      toast('Could not send invite — check the email and try again', 4000, 'error');
+    }
+  } catch(e) {
+    toast('Invite failed — check your connection', 4000, 'error');
+  }
 }
 
 async function setPhase(tripId, phase) {
