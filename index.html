@@ -748,7 +748,17 @@ input[type=number] { -moz-appearance: textfield; }
       </div>
     </div>
 
-    <div class="bail-rules-section">
+    <!-- member view — just shows what rule applies, no picker -->
+    <div class="bail-rules-section" id="bail-member-note" style="display:none">
+      <div style="padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Bail rule for this trip</div>
+        <div style="font-size:14px;font-weight:600;color:var(--ink)" id="bail-member-rule-label">Majority vote</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5" id="bail-member-rule-desc">More than half the group votes on what happens to a bail deposit.</div>
+      </div>
+    </div>
+
+    <!-- organizer view — full picker -->
+    <div class="bail-rules-section" id="bail-organizer-section">
       <div class="bail-rules-title">Choose your bail rule</div>
 
       <div class="bail-rule-item" id="br-majority" onclick="selectBailFromModal('majority')">
@@ -771,6 +781,8 @@ input[type=number] { -moz-appearance: textfield; }
         <div class="bail-rule-item-desc">Bailer gets their full $100 back no matter what. Pactra takes no bail cut. Use this if you trust everyone.</div>
       </div>
     </div>
+
+    </div><!-- end bail-organizer-section -->
 
     <div class="bail-modal-footer">
       <button class="btn btn-primary" onclick="closeBailModalConfirm()" style="border-radius:var(--radius-md);padding:12px 28px">Got it →</button>
@@ -1525,7 +1537,10 @@ async function openTripModal(tripId) {
     } else if (myInterest === 'definitely' || myInterest === 'pending') {
       html += `<div class="commit-banner">
         <div style="font-weight:700;font-size:15px;color:var(--blue);margin-bottom:6px">Time to commit 💰</div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">The organizer has moved to the commit phase. Pay your $${trip.deposit_amount} deposit to lock in your spot.</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:6px">The organizer has moved to the commit phase. Pay your $${trip.deposit_amount} deposit to lock in your spot.</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+          <a href="#" onclick="openBailModal('member','${trip.bail_rule}');return false" style="color:var(--blue);text-decoration:none;font-weight:600">How do deposits &amp; fees work? →</a>
+        </div>
         <button class="btn btn-primary" onclick="commitToTrip('${trip.id}')" style="border-radius:var(--radius-md);width:100%;justify-content:center;padding:13px">
           Pay $${trip.deposit_amount} deposit →
         </button>
@@ -2016,12 +2031,52 @@ function switchTab(tab) {
 // ══════════════════════════════════════════
 let bailModalShown = false;
 
-function openBailModal() {
-  // Highlight currently selected bail rule
-  ['majority','organizer','auto-keep','auto-return'].forEach(r => {
-    const el = document.getElementById('br-' + r);
-    if (el) el.classList.toggle('selected', r === selectedBailRule);
-  });
+function openBailModal(mode = 'organizer', bailRule = null) {
+  const isOrg = mode === 'organizer';
+
+  // Show/hide sections based on mode
+  const orgSection = document.getElementById('bail-organizer-section');
+  const memberNote = document.getElementById('bail-member-note');
+  if (orgSection) orgSection.style.display = isOrg ? 'block' : 'none';
+  if (memberNote) memberNote.style.display = isOrg ? 'none' : 'block';
+
+  // Update step 2 text depending on mode
+  const step2Body = document.querySelector('.bail-step:nth-child(2) .bail-step-body');
+  if (step2Body) {
+    step2Body.innerHTML = isOrg
+      ? 'They committed <strong style="color:var(--ink)">$100</strong> to escrow. The group votes on what happens to it — based on the bail rule you set below.'
+      : 'They committed <strong style="color:var(--ink)">$100</strong> to escrow. What happens next depends on the bail rule the organizer set for this trip.';
+  }
+
+  // Update subtitle
+  const subtitle = document.querySelector('.bail-modal-subtitle');
+  if (subtitle) {
+    subtitle.textContent = isOrg
+      ? 'Using a $100 deposit as an example — pick the rule that fits your group.'
+      : "Using a $100 deposit as an example — here's how your money is protected.";
+  }
+
+  if (isOrg) {
+    // Highlight currently selected bail rule
+    ['majority','organizer','auto-keep','auto-return'].forEach(r => {
+      const el = document.getElementById('br-' + r);
+      if (el) el.classList.toggle('selected', r === selectedBailRule);
+    });
+  } else if (bailRule) {
+    // Show member's bail rule
+    const labels = { majority: 'Majority vote', organizer: 'Organizer decides', 'auto-keep': 'Auto-keep', 'auto-return': 'Always return' };
+    const descs = {
+      majority: 'More than half the group votes on what happens to a bail deposit. Pactra takes 15%, the rest is split among committed members.',
+      organizer: 'The trip organizer decides whether to keep or return bail deposits. Pactra takes 15% of any kept deposit.',
+      'auto-keep': 'Bail deposits are automatically split the moment someone bails. No vote needed. Pactra takes 15%, rest goes to committed members.',
+      'auto-return': 'Bail deposits are always returned in full. No penalty for bailing on this trip.'
+    };
+    const ruleLabel = document.getElementById('bail-member-rule-label');
+    const ruleDesc  = document.getElementById('bail-member-rule-desc');
+    if (ruleLabel) ruleLabel.textContent = labels[bailRule] || bailRule;
+    if (ruleDesc)  ruleDesc.textContent  = descs[bailRule]  || '';
+  }
+
   document.getElementById('bail-modal-overlay').classList.add('open');
 }
 
