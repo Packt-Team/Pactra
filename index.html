@@ -337,25 +337,25 @@ input[type=number] { -moz-appearance: textfield; }
 @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } .nav-tabs { display: none; } .nav-user { display: none; } }
 
 /* ── BAIL EXPLAINER MODAL ── */
-.bail-modal-overlay { position: fixed; inset: 0; background: #00000080; backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 500; padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.bail-modal-overlay { position: fixed; inset: 0; background: #00000080; backdrop-filter: blur(6px); display: none; align-items: flex-start; justify-content: center; z-index: 500; padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .bail-modal-overlay.open { display: flex; animation: fadein 0.18s ease; } @supports not (backdrop-filter: blur(1px)) { .bail-modal-overlay { background: #000000cc; } }
 .bail-modal { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 520px; margin: auto; animation: slideup 0.22s ease; box-shadow: 0 16px 64px #00000080; overflow-y: auto; max-height: 90vh; }
-.bail-modal-header { padding: 24px 28px 0; }
+.bail-modal-header { padding: 20px 20px 0; }
 .bail-modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.4px; margin-bottom: 6px; }
 .bail-modal-subtitle { font-size: 13px; color: var(--muted); line-height: 1.5; }
-.bail-steps { display: flex; flex-direction: column; gap: 10px; padding: 20px 28px; }
+.bail-steps { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; }
 .bail-step { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; background: var(--bg2); border-radius: var(--radius-md); border: 1px solid var(--border); }
 .bail-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: white; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
 .bail-step-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
 .bail-step-body { font-size: 13px; color: var(--muted); line-height: 1.5; }
-.bail-rules-section { padding: 0 28px 20px; }
+.bail-rules-section { padding: 0 20px 16px; }
 .bail-rules-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-size: 11px; }
 .bail-rule-item { padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 8px; cursor: pointer; transition: all 0.15s; background: var(--bg2); }
 .bail-rule-item:hover { border-color: var(--blue); }
 .bail-rule-item.selected { border-color: var(--blue); background: var(--blue-dim); }
 .bail-rule-item-label { font-weight: 700; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
 .bail-rule-item-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
-.bail-modal-footer { padding: 16px 28px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; background: var(--bg2); }
+.bail-modal-footer { padding: 16px 20px 24px; border-top: 1px solid var(--border); display: flex; justify-content: stretch; background: var(--bg2); }
 
 /* ── TRIP DETAIL MODAL ── */
 .trip-modal-overlay { position: fixed; inset: 0; background: #0f0e0d80; backdrop-filter: blur(6px); display: none; align-items: flex-start; justify-content: center; z-index: 300; padding: 24px 16px; overflow-y: auto; }
@@ -785,7 +785,7 @@ input[type=number] { -moz-appearance: textfield; }
     </div><!-- end bail-organizer-section -->
 
     <div class="bail-modal-footer">
-      <button class="btn btn-primary" onclick="closeBailModalConfirm()" style="border-radius:var(--radius-md);padding:12px 28px">Got it →</button>
+      <button class="btn btn-primary" onclick="closeBailModalConfirm()" style="border-radius:var(--radius-md);padding:13px;flex:1;justify-content:center">Got it →</button>
     </div>
   </div>
 </div>
