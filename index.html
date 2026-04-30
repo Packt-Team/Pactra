@@ -348,7 +348,16 @@ input[type=number] { -moz-appearance: textfield; }
 .trip-modal-section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; letter-spacing: -0.2px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .vote-option { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 8px; transition: all 0.15s; cursor: pointer; background: var(--bg2); }
 .vote-option:hover { border-color: var(--blue); background: var(--blue-dim); }
-.vote-option.voted { border-color: var(--sage); background: var(--sage-dim); }
+.vote-option.voted { border-color: var(--blue); background: var(--blue-dim); }
+.interest-group { display: flex; gap: 8px; margin-bottom: 4px; }
+.interest-btn { flex: 1; padding: 11px 8px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg2); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s; text-align: center; }
+.interest-btn:hover { border-color: var(--ink); color: var(--ink); }
+.interest-btn.definitely { border-color: var(--blue); background: var(--blue-dim); color: var(--blue); }
+.interest-btn.maybe { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
+.interest-btn.not_interested { border-color: var(--border2); background: var(--bg3); color: var(--muted2); }
+.commit-banner { background: var(--blue-dim); border: 1px solid var(--blue-border); border-radius: var(--radius-md); padding: 18px 20px; margin-bottom: 8px; }
+.commit-banner.maybe-nudge { background: var(--gold-dim); border-color: #f0a03030; }
+.commit-banner.not-going { background: var(--bg2); border-color: var(--border); }
 .vote-option-emoji { font-size: 22px; flex-shrink: 0; }
 .vote-option-name { flex: 1; font-weight: 500; font-size: 14px; }
 .vote-bar-wrap { flex: 1; }
@@ -1264,6 +1273,7 @@ async function launchTrip() {
   await db.from('trip_members').insert({
     trip_id: trip.id,
     user_id: currentUser.id,
+    email: currentUser.email,
     role: 'organizer',
     status: 'committed',
     can_add_destinations: true
@@ -1342,7 +1352,7 @@ async function openTripModal(tripId) {
   const trip = allTrips.find(t => t.id === tripId);
   if (!trip) return;
 
-  // Load real vote counts for non-guest
+  // Load real vote counts + my interest for non-guest
   if (currentUser.id !== 'guest' && trip.trip_destinations?.length > 0) {
     const { data: votes } = await db
       .from('trip_votes')
@@ -1350,12 +1360,9 @@ async function openTripModal(tripId) {
       .eq('trip_id', tripId);
 
     if (votes) {
-      // Count votes per destination
       const counts = {};
       votes.forEach(v => { counts[v.destination_id] = (counts[v.destination_id] || 0) + 1; });
       trip.trip_destinations.forEach(d => { d.votes = counts[d.id] || 0; });
-
-      // Mark user's current vote
       const { data: myVote } = await db
         .from('trip_votes')
         .select('destination_id')
@@ -1366,10 +1373,31 @@ async function openTripModal(tripId) {
     }
   }
 
+  // Load my current interest + member record
+  let myMember = null;
+  if (currentUser.id !== 'guest') {
+    const { data: mm } = await db
+      .from('trip_members')
+      .select('*')
+      .eq('trip_id', tripId)
+      .eq('user_id', currentUser.id)
+      .single();
+    myMember = mm;
+    // Also update local trip_members
+    if (mm && trip.trip_members) {
+      const idx = trip.trip_members.findIndex(m => m.user_id === currentUser.id);
+      if (idx >= 0) trip.trip_members[idx] = mm;
+    }
+  } else {
+    myMember = (trip.trip_members || []).find(m => m.user_id === 'guest') || { interest: 'pending', status: 'invited' };
+  }
+
   const cfg = PHASE_CFG[trip.phase] || PHASE_CFG.voting;
   const dests = trip.trip_destinations || [];
   const members = trip.trip_members || [];
   const isOrganizer = trip.created_by === currentUser.id || currentUser.id === 'guest';
+  const myInterest = myMember?.interest || 'pending';
+  const myStatus = myMember?.status || 'invited';
 
   // Header
   document.getElementById('tm-badge').className = 'badge ' + cfg.badge;
@@ -1377,12 +1405,43 @@ async function openTripModal(tripId) {
   document.getElementById('tm-title').textContent = trip.name || 'Untitled Trip';
   document.getElementById('tm-meta').textContent = [trip.dates, trip.deposit_amount ? '$' + trip.deposit_amount + ' deposit' : ''].filter(Boolean).join(' · ');
 
-  // Build body
   let html = '';
 
-  // ── VOTE SECTION ──
-  if (dests.length > 0) {
-    // Ensure all destinations have an id
+  // ── COMMIT PHASE BANNER (non-organizer members) ──
+  if (trip.phase === 'commit' && !isOrganizer) {
+    if (myStatus === 'committed') {
+      html += `<div class="commit-banner">
+        <div style="font-weight:700;font-size:15px;color:var(--blue);margin-bottom:4px">✓ You're committed!</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Your $${trip.deposit_amount} deposit is locked in. You're on the trip.</div>
+      </div>`;
+    } else if (myInterest === 'definitely' || myInterest === 'pending') {
+      html += `<div class="commit-banner">
+        <div style="font-weight:700;font-size:15px;color:var(--blue);margin-bottom:6px">Time to commit 💰</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">The organizer has moved to the commit phase. Pay your $${trip.deposit_amount} deposit to lock in your spot.</div>
+        <button class="btn btn-primary" onclick="commitToTrip('${trip.id}')" style="border-radius:var(--radius-md);width:100%;justify-content:center;padding:13px">
+          Pay $${trip.deposit_amount} deposit →
+        </button>
+      </div>`;
+    } else if (myInterest === 'maybe') {
+      html += `<div class="commit-banner maybe-nudge">
+        <div style="font-weight:700;font-size:15px;color:var(--gold);margin-bottom:6px">Still on the fence? 🤔</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px">The group is moving forward. Commit now to secure your spot — or let the group know you're out.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="commitToTrip('${trip.id}')" style="flex:1;justify-content:center;border-radius:var(--radius-md);padding:12px">I'm in — pay $${trip.deposit_amount}</button>
+          <button class="btn btn-secondary" onclick="setInterest('${trip.id}','not_interested')" style="border-radius:var(--radius-md);padding:12px">I'm out</button>
+        </div>
+      </div>`;
+    } else if (myInterest === 'not_interested') {
+      html += `<div class="commit-banner not-going">
+        <div style="font-weight:600;font-size:14px;color:var(--muted);margin-bottom:4px">You marked yourself as not going.</div>
+        <div style="font-size:12px;color:var(--muted2);margin-bottom:10px">Changed your mind?</div>
+        <button class="btn btn-secondary btn-sm" onclick="setInterest('${trip.id}','definitely')">I want back in</button>
+      </div>`;
+    }
+  }
+
+  // ── VOTE SECTION (voting phase only) ──
+  if (trip.phase === 'voting' && dests.length > 0) {
     dests.forEach((d, i) => { if (!d.id) d.id = 'dest-' + i; });
     const totalVotes = dests.reduce((sum, d) => sum + (d.votes || 0), 0) || 1;
     html += `<div>
@@ -1403,6 +1462,36 @@ async function openTripModal(tripId) {
     </div>`;
   }
 
+  // ── SHOW WINNING DEST in commit/locked phase ──
+  if ((trip.phase === 'commit' || trip.phase === 'locked') && dests.length > 0) {
+    const winner = dests.reduce((a, b) => (b.votes||0) > (a.votes||0) ? b : a, dests[0]);
+    html += `<div>
+      <div class="trip-modal-section-title">📍 Destination</div>
+      <div style="padding:14px 16px;background:var(--blue-dim);border:1px solid var(--blue-border);border-radius:var(--radius-md);display:flex;align-items:center;gap:12px">
+        <div style="font-size:28px">${winner.name.match(/^\p{Emoji}/u)?.[0] || '📍'}</div>
+        <div>
+          <div style="font-weight:700;font-size:15px">${winner.name.replace(/^\p{Emoji}+\s*/u, '')}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${winner.votes||0} vote${(winner.votes||0)!==1?'s':''} · Leading destination</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── INTEREST RESPONSE (voting phase, non-organizer) ──
+  if (trip.phase === 'voting' && !isOrganizer) {
+    const iLabels = { definitely: '✈️ Definitely in', maybe: '🤔 Maybe', not_interested: '❌ Not interested', pending: 'Are you going?' };
+    html += `<div>
+      <div class="trip-modal-section-title">🙋 Are you going?</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Let the group know your interest level. If you say "Definitely", you'll need to pay a deposit when the organizer moves to the commit phase.</div>
+      <div class="interest-group">
+        <button class="interest-btn${myInterest==='definitely'?' definitely':''}" onclick="setInterest('${trip.id}','definitely')">✈️ Definitely</button>
+        <button class="interest-btn${myInterest==='maybe'?' maybe':''}" onclick="setInterest('${trip.id}','maybe')">🤔 Maybe</button>
+        <button class="interest-btn${myInterest==='not_interested'?' not_interested':''}" onclick="setInterest('${trip.id}','not_interested')">❌ Not going</button>
+      </div>
+      ${myInterest !== 'pending' ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;text-align:center">You said <strong style="color:var(--ink)">${iLabels[myInterest]}</strong> — tap to change</div>` : ''}
+    </div>`;
+  }
+
   // ── TRIP INFO ──
   html += `<div>
     <div class="trip-modal-section-title">📋 Trip info</div>
@@ -1411,6 +1500,14 @@ async function openTripModal(tripId) {
     <div class="trip-meta-row"><div class="trip-meta-label">Deposit</div><div class="trip-meta-value">$${trip.deposit_amount}</div></div>
     <div class="trip-meta-row"><div class="trip-meta-label">Bail rule</div><div class="trip-meta-value">${BAIL_LABELS[trip.bail_rule] || 'Majority vote'}</div></div>
     <div class="trip-meta-row"><div class="trip-meta-label">Members</div><div class="trip-meta-value">${members.length} · ${members.filter(m=>m.status==='committed').length} committed</div></div>
+    <div class="trip-meta-row">
+      <div class="trip-meta-label">Interest</div>
+      <div class="trip-meta-value" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+        <span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:100px;background:var(--blue-dim);color:var(--blue)">${members.filter(m=>m.interest==='definitely').length} definitely</span>
+        <span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:100px;background:var(--gold-dim);color:var(--gold)">${members.filter(m=>m.interest==='maybe').length} maybe</span>
+        <span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:100px;background:var(--bg4);color:var(--muted)">${members.filter(m=>m.interest==='not_interested').length} not going</span>
+      </div>
+    </div>
   </div>`;
 
   // ── ADD DESTINATION (organizer or permitted members) ──
@@ -1442,8 +1539,8 @@ async function openTripModal(tripId) {
       <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
         ${(trip.trip_members||[]).map(m => `
           <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border-radius:var(--radius-sm);font-size:13px">
-            <div style="width:28px;height:28px;border-radius:50%;background:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0">${(m.user_id||'?')[0].toUpperCase()}</div>
-            <div style="flex:1;color:var(--muted)">${m.role === 'organizer' ? 'You (organizer)' : m.user_id}</div>
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--blue-mid);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0">${(m.email||m.user_id||'?')[0].toUpperCase()}</div>
+            <div style="flex:1;color:var(--muted)">${m.role === 'organizer' ? (m.email || 'You') + ' (organizer)' : (m.email || m.user_id)}</div>
             <span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:100px;background:${m.status==='committed'?'var(--blue-dim)':m.status==='invited'?'var(--bg4)':'var(--orange-dim)'};color:${m.status==='committed'?'var(--blue)':m.status==='invited'?'var(--muted)':'var(--orange)'}">${m.status}</span>
           </div>`).join('')}
       </div>` : ''}
@@ -1473,6 +1570,70 @@ function closeTripModal(e) {
   if (e.target === document.getElementById('trip-modal-overlay')) {
     document.getElementById('trip-modal-overlay').classList.remove('open');
   }
+}
+
+async function setInterest(tripId, interest) {
+  // Guest mode
+  if (currentUser.id === 'guest') {
+    const trip = allTrips.find(t => t.id === tripId);
+    if (trip) {
+      const m = (trip.trip_members || []).find(m => m.user_id === 'guest');
+      if (m) m.interest = interest;
+    }
+    openTripModal(tripId);
+    toast('Interest saved!', 2000, 'success');
+    return;
+  }
+
+  const { error } = await db
+    .from('trip_members')
+    .update({ interest })
+    .eq('trip_id', tripId)
+    .eq('user_id', currentUser.id);
+
+  if (error) { toast('Could not save — try again', 3000, 'error'); return; }
+
+  // Update local state
+  const trip = allTrips.find(t => t.id === tripId);
+  if (trip?.trip_members) {
+    const m = trip.trip_members.find(m => m.user_id === currentUser.id);
+    if (m) m.interest = interest;
+  }
+
+  const labels = { definitely: "You're in! ✈️", maybe: "Marked as maybe 🤔", not_interested: "Marked as not going" };
+  toast(labels[interest] || 'Saved', 2000, 'success');
+  openTripModal(tripId); // re-render to show updated state
+}
+
+async function commitToTrip(tripId) {
+  const trip = allTrips.find(t => t.id === tripId);
+  if (!trip) return;
+
+  // Guest mode
+  if (currentUser.id === 'guest') {
+    toast('Commit requires a real account', 3000, 'error');
+    return;
+  }
+
+  // For now — mark as committed without Stripe
+  // TODO: Replace this block with Stripe payment flow
+  const { error } = await db
+    .from('trip_members')
+    .update({ status: 'committed', interest: 'definitely' })
+    .eq('trip_id', tripId)
+    .eq('user_id', currentUser.id);
+
+  if (error) { toast('Could not commit — try again', 3000, 'error'); return; }
+
+  // Update local state
+  if (trip.trip_members) {
+    const m = trip.trip_members.find(m => m.user_id === currentUser.id);
+    if (m) { m.status = 'committed'; m.interest = 'definitely'; }
+  }
+
+  toast("You're committed! 🎉 Deposit payment coming soon.", 4000, 'success');
+  await loadTrips();
+  openTripModal(tripId);
 }
 
 async function castVote(tripId, destId, el) {
@@ -1727,6 +1888,7 @@ async function acceptPendingInvite(userId) {
   await db.from('trip_members').upsert({
     trip_id: invite.trip_id,
     user_id: userId,
+    email: currentUser.email,
     role: 'member',
     status: 'invited',
     can_add_destinations: false
