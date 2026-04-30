@@ -1492,14 +1492,59 @@ async function openTripModal(tripId) {
     </div>`;
   }
 
-  // ── TRIP INFO ──
+  // ── TRIP INFO (editable for organizer) ──
+  const canEdit = isOrganizer && trip.phase === 'voting';
+  const bailLocked = trip.phase === 'commit' || trip.phase === 'locked';
+  const inputStyle = "width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;margin-top:4px";
+
   html += `<div>
-    <div class="trip-modal-section-title">📋 Trip info</div>
-    <div class="trip-meta-row"><div class="trip-meta-label">Name</div><div class="trip-meta-value">${trip.name || '—'}</div></div>
-    <div class="trip-meta-row"><div class="trip-meta-label">Dates</div><div class="trip-meta-value">${trip.dates || 'TBD'}</div></div>
-    <div class="trip-meta-row"><div class="trip-meta-label">Deposit</div><div class="trip-meta-value">$${trip.deposit_amount}</div></div>
-    <div class="trip-meta-row"><div class="trip-meta-label">Bail rule</div><div class="trip-meta-value">${BAIL_LABELS[trip.bail_rule] || 'Majority vote'}</div></div>
-    <div class="trip-meta-row"><div class="trip-meta-label">Members</div><div class="trip-meta-value">${members.length} · ${members.filter(m=>m.status==='committed').length} committed</div></div>
+    <div class="trip-modal-section-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>📋 Trip info</span>
+      ${canEdit ? `<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 10px" onclick="saveTripInfo('${trip.id}')">Save changes</button>` : ''}
+    </div>
+
+    <div class="trip-meta-row">
+      <div class="trip-meta-label">Name</div>
+      <div class="trip-meta-value" style="flex:1;margin-left:16px">
+        ${canEdit
+          ? `<input id="edit-name-${trip.id}" type="text" style="${inputStyle}" value="${(trip.name||'').replace(/"/g,'&quot;')}" placeholder="Trip name"/>`
+          : trip.name || '—'}
+      </div>
+    </div>
+
+    <div class="trip-meta-row">
+      <div class="trip-meta-label">Dates</div>
+      <div class="trip-meta-value" style="flex:1;margin-left:16px">
+        ${canEdit
+          ? `<input id="edit-dates-${trip.id}" type="text" style="${inputStyle}" value="${(trip.dates||'').replace(/"/g,'&quot;')}" placeholder="e.g. Aug 10–17, 2025 or TBD"/>`
+          : trip.dates || 'TBD'}
+      </div>
+    </div>
+
+    <div class="trip-meta-row">
+      <div class="trip-meta-label">Deposit</div>
+      <div class="trip-meta-value">$${trip.deposit_amount}</div>
+    </div>
+
+    <div class="trip-meta-row">
+      <div class="trip-meta-label">Bail rule</div>
+      <div class="trip-meta-value" style="flex:1;margin-left:16px">
+        ${canEdit && !bailLocked
+          ? `<select id="edit-bail-${trip.id}" style="${inputStyle}">
+              <option value="majority" ${trip.bail_rule==='majority'?'selected':''}>Majority vote</option>
+              <option value="organizer" ${trip.bail_rule==='organizer'?'selected':''}>Organizer decides</option>
+              <option value="auto-keep" ${trip.bail_rule==='auto-keep'?'selected':''}>Auto-keep</option>
+              <option value="auto-return" ${trip.bail_rule==='auto-return'?'selected':''}>Always return</option>
+            </select>`
+          : `${BAIL_LABELS[trip.bail_rule] || 'Majority vote'}${bailLocked ? ' <span style="font-size:11px;color:var(--muted)">(locked)</span>' : ''}`}
+      </div>
+    </div>
+
+    <div class="trip-meta-row">
+      <div class="trip-meta-label">Members</div>
+      <div class="trip-meta-value">${members.length} · ${members.filter(m=>m.status==='committed').length} committed</div>
+    </div>
+
     <div class="trip-meta-row">
       <div class="trip-meta-label">Interest</div>
       <div class="trip-meta-value" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
@@ -1698,6 +1743,40 @@ async function addDestToTrip(tripId) {
   input.value = '';
   openTripModal(tripId); // re-render modal with new destination
   toast('Destination added!', 2000, 'success');
+}
+
+async function saveTripInfo(tripId) {
+  const trip = allTrips.find(t => t.id === tripId);
+  if (!trip) return;
+
+  const nameEl  = document.getElementById('edit-name-'  + tripId);
+  const datesEl = document.getElementById('edit-dates-' + tripId);
+  const bailEl  = document.getElementById('edit-bail-'  + tripId);
+
+  const updates = {};
+  if (nameEl  && nameEl.value.trim())  updates.name  = nameEl.value.trim();
+  if (datesEl)                          updates.dates = datesEl.value.trim() || null;
+  if (bailEl)                           updates.bail_rule = bailEl.value;
+
+  if (Object.keys(updates).length === 0) { toast('Nothing to save', 2000); return; }
+
+  // Guest mode
+  if (currentUser.id === 'guest') {
+    Object.assign(trip, updates);
+    openTripModal(tripId);
+    renderTrips();
+    toast('Trip updated!', 2000, 'success');
+    return;
+  }
+
+  const { error } = await db.from('trips').update(updates).eq('id', tripId);
+  if (error) { toast('Could not save — try again', 3000, 'error'); return; }
+
+  // Update local state
+  Object.assign(trip, updates);
+  openTripModal(tripId);
+  renderTrips();
+  toast('Trip updated! ✓', 2000, 'success');
 }
 
 async function inviteMemberToTrip(tripId) {
