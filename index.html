@@ -456,6 +456,29 @@ input[type=number] { -moz-appearance: textfield; }
       <p class="auth-switch">Already have an account? <a href="#" onclick="switchAuthTab('login');return false">Log in</a></p>
     </div>
 
+    <!-- password reset -->
+    <div id="form-reset" style="display:none">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:36px;margin-bottom:10px">🔑</div>
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:18px;margin-bottom:6px">Reset your password</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Enter a new password for your account.</div>
+      </div>
+      <div class="auth-field">
+        <label>New password</label>
+        <div class="auth-input-group">
+          <input type="password" class="auth-input" id="reset-password" placeholder="Min. 8 characters" style="padding-right:60px" oninput="pwStrength(this.value)"/>
+          <button class="pw-toggle" type="button" onclick="togglePw('reset-password',this)">Show</button>
+        </div>
+        <div class="pw-strength"><div class="pw-bar" id="sb1"></div><div class="pw-bar" id="sb2"></div><div class="pw-bar" id="sb3"></div><div class="pw-bar" id="sb4"></div></div>
+        <div class="pw-label" id="pw-label"></div>
+      </div>
+      <div class="auth-field">
+        <label>Confirm password</label>
+        <input type="password" class="auth-input" id="reset-password-confirm" placeholder="Repeat your new password" onkeydown="if(event.key==='Enter')handlePasswordReset()"/>
+      </div>
+      <button class="btn btn-primary auth-submit" id="btn-reset" onclick="handlePasswordReset()">Set new password →</button>
+    </div>
+
     <!-- confirm email -->
     <div id="form-confirm" style="display:none">
       <div class="confirm-box">
@@ -549,7 +572,7 @@ input[type=number] { -moz-appearance: textfield; }
       <h1 class="page-title">No more<br/><em>flaking</em> allowed.</h1>
       <p class="page-sub">Vote, commit, hold each other accountable.</p>
     </div>
-    <div class="filter-bar">
+    <div class="filter-bar" id="filter-bar">
       <button class="btn btn-primary btn-sm" onclick="filterTrips('all')"    id="filter-all">All trips</button>
       <button class="btn btn-secondary btn-sm" onclick="filterTrips('voting')"  id="filter-voting">Voting</button>
       <button class="btn btn-secondary btn-sm" onclick="filterTrips('commit')"  id="filter-commit">Commit phase</button>
@@ -630,7 +653,7 @@ input[type=number] { -moz-appearance: textfield; }
               </div>
             </div>
             <div>
-              <label class="field-label">Bail rule</label>
+              <label class="field-label" style="display:flex;align-items:center;justify-content:space-between">Bail rule <button onclick="openBailModal('organizer')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;padding:0;display:flex;align-items:center;gap:4px;font-family:'Plus Jakarta Sans',sans-serif" title="How does this work?">ⓘ How it works</button></label>
               <div class="radio-group" id="bail-rule-group">
                 <div class="radio-option selected" onclick="selectBail(this,'majority')"><div class="radio-dot"></div><div><div class="radio-label">Majority vote</div><div class="radio-desc">Group votes to keep or return the deposit.</div></div></div>
                 <div class="radio-option" onclick="selectBail(this,'organizer')"><div class="radio-dot"></div><div><div class="radio-label">Organizer decides</div><div class="radio-desc">You make the final call.</div></div></div>
@@ -867,6 +890,39 @@ function clearAuthMsg() { const el = document.getElementById('auth-msg'); el.cla
 // AUTH
 // ══════════════════════════════════════════
 let lastSignupEmail = '';
+
+async function handlePasswordReset() {
+  const pw  = document.getElementById('reset-password').value;
+  const pw2 = document.getElementById('reset-password-confirm').value;
+  const btn = document.getElementById('btn-reset');
+
+  if (pw.length < 8) { showAuthMsg('Password must be at least 8 characters.', 'error'); return; }
+  if (pw !== pw2)    { showAuthMsg("Passwords don't match.", 'error'); return; }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const { error } = await db.auth.updateUser({ password: pw });
+  if (error) {
+    showAuthMsg(error.message, 'error');
+    btn.disabled = false; btn.textContent = 'Set new password →';
+    return;
+  }
+
+  showAuthMsg('Password updated! Logging you in…', 'success');
+  setTimeout(async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) await onSignedIn(session.user, false);
+  }, 1200);
+}
+
+function showResetForm() {
+  document.getElementById('form-login').style.display    = 'none';
+  document.getElementById('form-signup').style.display   = 'none';
+  document.getElementById('form-confirm').style.display  = 'none';
+  document.getElementById('form-reset').style.display    = 'block';
+  document.getElementById('auth-tabs').style.display     = 'none';
+  clearAuthMsg();
+}
 
 async function handleGoogleAuth() {
   try {
@@ -1121,6 +1177,18 @@ async function loadTrips() {
 
 function renderTrips() {
   const list = document.getElementById('trips-list');
+
+  // Update filter counts
+  const counts = { voting: 0, commit: 0, locked: 0 };
+  allTrips.forEach(t => { if (counts[t.phase] !== undefined) counts[t.phase]++; });
+  const allBtn    = document.getElementById('filter-all');
+  const votingBtn = document.getElementById('filter-voting');
+  const commitBtn = document.getElementById('filter-commit');
+  const lockedBtn = document.getElementById('filter-locked');
+  if (allBtn)    allBtn.textContent    = `All trips${allTrips.length > 0 ? ' · ' + allTrips.length : ''}`;
+  if (votingBtn) votingBtn.textContent = `Voting${counts.voting > 0 ? ' · ' + counts.voting : ''}`;
+  if (commitBtn) commitBtn.textContent = `Commit phase${counts.commit > 0 ? ' · ' + counts.commit : ''}`;
+  if (lockedBtn) lockedBtn.textContent = `Locked${counts.locked > 0 ? ' · ' + counts.locked : ''}`;
 
   let filtered = allTrips;
   if (currentFilter !== 'all') {
@@ -2153,11 +2221,30 @@ async function checkInviteToken() {
   pendingInviteToken = token;
   window._pendingInvite = invite;
 
-  // Show a banner on the auth screen
+  // Look up inviter name
+  let inviterDisplay = 'Someone';
+  if (invite.invited_by) {
+    const { data: inviter } = await db.from('trip_members')
+      .select('email')
+      .eq('user_id', invite.invited_by)
+      .eq('trip_id', invite.trip_id)
+      .single();
+    if (inviter?.email) inviterDisplay = inviter.email.split('@')[0];
+  }
+
+  // Update auth screen to show who invited them and to what trip
   const tagline = document.querySelector('.auth-tagline');
   if (tagline) {
-    tagline.innerHTML = `You've been invited to join <strong style="color:var(--blue)">${invite.trips.name}</strong>.<br/>Sign in or create an account to vote and commit.`;
+    tagline.innerHTML = `<span style="color:var(--blue);font-weight:700">${inviterDisplay}</span> invited you to join <span style="color:var(--blue);font-weight:700">${invite.trips.name}</span>.<br/><span style="font-size:12px;color:var(--muted)">Sign in or create an account to vote and commit.</span>`;
   }
+
+  // Also update the logo area to feel more welcoming
+  const logo = document.querySelector('.auth-logo');
+  if (logo) logo.insertAdjacentHTML('afterend', `
+    <div style="display:inline-flex;align-items:center;gap:8px;background:var(--blue-dim);border:1px solid var(--blue-border);border-radius:100px;padding:5px 12px;margin-bottom:14px;font-size:12px;font-weight:600;color:var(--blue)">
+      ✈️ You have a trip invite
+    </div>
+  `);
 }
 
 async function acceptPendingInvite(userId) {
@@ -2206,6 +2293,13 @@ try {
 
 try {
   db.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      // User clicked the reset link in their email — show reset form
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('main-app').classList.add('hidden');
+      showResetForm();
+      return;
+    }
     if (event === 'SIGNED_IN' && session && !currentUser) {
       await acceptPendingInvite(session.user.id);
       onSignedIn(session.user, false);
