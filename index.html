@@ -421,7 +421,10 @@ input[type=number] { -moz-appearance: textfield; }
         </div>
       </div>
       <button class="btn btn-primary auth-submit" id="btn-login" onclick="handleLogin()">Log in &rarr;</button>
-      <p class="auth-switch">No account? <a href="#" onclick="switchAuthTab('signup');return false">Sign up free</a></p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        <p class="auth-switch" style="margin:0">No account? <a href="#" onclick="switchAuthTab('signup');return false">Sign up free</a></p>
+        <a href="#" onclick="handleForgotPassword();return false" style="font-size:12px;color:var(--muted);text-decoration:none" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--muted)'">Forgot password?</a>
+      </div>
       <div style="display:flex;align-items:center;gap:12px;margin:16px 0 8px">
         <div style="flex:1;height:1px;background:var(--border)"></div>
         <span style="font-size:11px;color:var(--muted2);font-weight:500">or</span>
@@ -890,6 +893,19 @@ function clearAuthMsg() { const el = document.getElementById('auth-msg'); el.cla
 // AUTH
 // ══════════════════════════════════════════
 let lastSignupEmail = '';
+
+async function handleForgotPassword() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) {
+    showAuthMsg('Enter your email address above first.', 'error');
+    return;
+  }
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://getpactra.com'
+  });
+  if (error) { showAuthMsg(error.message, 'error'); return; }
+  showAuthMsg('Password reset email sent — check your inbox!', 'success');
+}
 
 async function handlePasswordReset() {
   const pw  = document.getElementById('reset-password').value;
